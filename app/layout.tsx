@@ -18,10 +18,11 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: 'St. Francis de Sales\' High School - Golden Jubilee (1976–2026)',
-  description: 'Celebrating 50 glorious years of transformational education. Alumni registration and homecoming for SFS Shanthinagar golden jubilee.',
+  title: "St. Francis de Sales' High School - Golden Jubilee (1976-2026)",
+  description:
+    'Celebrating 50 glorious years of transformational education. Alumni registration and homecoming for SFS Shanthinagar golden jubilee.',
   keywords: ['alumni', 'golden jubilee', 'school reunion', 'SFS Shanthinagar', 'registration'],
-  authors: [{ name: 'St. Francis de Sales\' High School' }],
+  authors: [{ name: "St. Francis de Sales' High School" }],
   applicationName: 'SFS Golden Jubilee',
   appleWebApp: {
     capable: true,
