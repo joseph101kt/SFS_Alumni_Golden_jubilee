@@ -8,6 +8,7 @@ import {
   type EventPricing,
 } from '@/lib/registration';
 import type { EventCatalog } from '@/lib/events/types';
+import { BATCH_START_YEAR } from '@/lib/registration-fields';
 
 type FormState = {
   title: string;
@@ -25,6 +26,8 @@ type FormState = {
   parking_2w_rupees: string;
   parking_4w_rupees: string;
   base_ticket_rupees: string;
+  fee_batch_from: string;
+  fee_batch_to: string;
 };
 
 function toLocalInput(iso: string | null | undefined) {
@@ -61,7 +64,17 @@ function initialFrom(event?: EventCatalog | null): FormState {
     parking_2w_rupees: paiseToRupeesField(event?.parking_2w_paise ?? 5000),
     parking_4w_rupees: paiseToRupeesField(event?.parking_4w_paise ?? 20000),
     base_ticket_rupees: paiseToRupeesField(event?.base_ticket_paise ?? 0),
+    fee_batch_from: event?.fee_batch_from != null ? String(event.fee_batch_from) : '',
+    fee_batch_to: event?.fee_batch_to != null ? String(event.fee_batch_to) : '',
   };
+}
+
+function optionalYear(s: string): number | null {
+  const t = s.trim();
+  if (!t) return null;
+  const n = Number(t);
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1900) return null;
+  return n;
 }
 
 function pricingFromForm(f: FormState): EventPricing {
@@ -74,6 +87,8 @@ function pricingFromForm(f: FormState): EventPricing {
     parking_2w_paise: r(f.parking_2w_rupees),
     parking_4w_paise: r(f.parking_4w_rupees),
     base_ticket_paise: r(f.base_ticket_rupees),
+    fee_batch_from: optionalYear(f.fee_batch_from),
+    fee_batch_to: optionalYear(f.fee_batch_to),
   };
 }
 
@@ -86,9 +101,25 @@ export default function AdminEventForm({ event }: { event?: EventCatalog | null 
   const preview = useMemo(() => {
     const pricing = pricingFromForm(form);
     const sample = { numberOfGuests: 1, lunch: true, dinner: true, parkingNeeded: '4-wheeler' as const };
+    const inRangeBatch =
+      optionalYear(form.fee_batch_from) ?? optionalYear(form.fee_batch_to) ?? BATCH_START_YEAR;
+    const outRangeBatch = (optionalYear(form.fee_batch_to) ?? 2099) + 1;
     return {
-      veg: getEventCostBreakdown(pricing, { ...sample, foodPreference: 'veg' }),
-      nonveg: getEventCostBreakdown(pricing, { ...sample, foodPreference: 'non-veg' }),
+      vegIn: getEventCostBreakdown(pricing, {
+        ...sample,
+        foodPreference: 'veg',
+        batch: inRangeBatch,
+      }),
+      vegOut: getEventCostBreakdown(pricing, {
+        ...sample,
+        foodPreference: 'veg',
+        batch: outRangeBatch,
+      }),
+      nonveg: getEventCostBreakdown(pricing, {
+        ...sample,
+        foodPreference: 'non-veg',
+        batch: inRangeBatch,
+      }),
     };
   }, [form]);
 
@@ -248,6 +279,49 @@ export default function AdminEventForm({ event }: { event?: EventCatalog | null 
               </div>
             ))}
           </div>
+          <div className="rounded-xl border border-jubilee-gold-light/80 bg-surface-paper p-4 space-y-3">
+            <p className="text-label-sm text-jubilee-gold-deep font-bold uppercase tracking-wide">
+              Fee batch range (optional)
+            </p>
+            <p className="text-body-sm text-on-surface-variant">
+              Leave both blank to charge every batch. Set from–to so only those batches pay the
+              registration fee (others ₹0 fee).
+            </p>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className={label} htmlFor="fee_batch_from">
+                  Batch from
+                </label>
+                <input
+                  id="fee_batch_from"
+                  type="number"
+                  min={1900}
+                  step="1"
+                  inputMode="numeric"
+                  placeholder="e.g. 1986"
+                  className={field}
+                  value={form.fee_batch_from}
+                  onChange={(e) => setField('fee_batch_from', e.target.value)}
+                />
+              </div>
+              <div>
+                <label className={label} htmlFor="fee_batch_to">
+                  Batch to
+                </label>
+                <input
+                  id="fee_batch_to"
+                  type="number"
+                  min={1900}
+                  step="1"
+                  inputMode="numeric"
+                  placeholder="e.g. 2000"
+                  className={field}
+                  value={form.fee_batch_to}
+                  onChange={(e) => setField('fee_batch_to', e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
         </section>
 
         {error && <p className="text-body-sm text-error">{error}</p>}
@@ -269,12 +343,24 @@ export default function AdminEventForm({ event }: { event?: EventCatalog | null 
         </p>
         <div className="mt-4 space-y-3">
           <div>
-            <div className="text-label-sm text-primary-fixed">Veg</div>
-            <div className="text-headline-md text-secondary-container">{formatCostForDisplay(preview.veg.totalCost)}</div>
+            <div className="text-label-sm text-primary-fixed">Veg (in fee range)</div>
+            <div className="text-headline-md text-secondary-container">
+              {formatCostForDisplay(preview.vegIn.totalCost)}
+            </div>
           </div>
+          {(form.fee_batch_from.trim() || form.fee_batch_to.trim()) && (
+            <div>
+              <div className="text-label-sm text-primary-fixed">Veg (outside fee range)</div>
+              <div className="text-headline-md text-secondary-container">
+                {formatCostForDisplay(preview.vegOut.totalCost)}
+              </div>
+            </div>
+          )}
           <div>
-            <div className="text-label-sm text-primary-fixed">Non-veg</div>
-            <div className="text-headline-md text-secondary-container">{formatCostForDisplay(preview.nonveg.totalCost)}</div>
+            <div className="text-label-sm text-primary-fixed">Non-veg (in fee range)</div>
+            <div className="text-headline-md text-secondary-container">
+              {formatCostForDisplay(preview.nonveg.totalCost)}
+            </div>
           </div>
         </div>
         <p className="text-label-sm text-primary-fixed-dim mt-2">{preview.nonveg.details}</p>

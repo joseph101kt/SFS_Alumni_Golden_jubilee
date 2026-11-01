@@ -4,10 +4,11 @@ import {
   DIET_PRICE_WARNING,
   selectCatalog,
   withoutDietPrices,
+  withoutFeeBatch,
 } from '@/lib/events/catalog-select';
 import { missingColumn } from '@/lib/events/registration-code';
 import { EVENT_SELECT } from '@/lib/events/types';
-import { parseNonNegInt } from '@/lib/events/pricing';
+import { parseNonNegInt, parseOptionalBatchYear } from '@/lib/events/pricing';
 import { createAdminClient } from '@/lib/supabase-admin';
 
 export async function GET() {
@@ -56,6 +57,8 @@ export async function POST(request: Request) {
     parking_2w_paise: parseNonNegInt(body.parking_2w_paise),
     parking_4w_paise: parseNonNegInt(body.parking_4w_paise),
     base_ticket_paise: parseNonNegInt(body.base_ticket_paise),
+    fee_batch_from: parseOptionalBatchYear(body.fee_batch_from),
+    fee_batch_to: parseOptionalBatchYear(body.fee_batch_to),
     is_primary: Boolean(body.is_primary),
     created_by: me.id,
     updated_at: new Date().toISOString(),
@@ -69,11 +72,8 @@ export async function POST(request: Request) {
   let { data, error } = await admin.from('event_catalog').insert(row).select(EVENT_SELECT).single();
   let warning: string | null = null;
   if (error && missingColumn(error)) {
-    const retry = await admin
-      .from('event_catalog')
-      .insert(withoutDietPrices(row))
-      .select(EVENT_SELECT)
-      .single();
+    const stripped = withoutFeeBatch(withoutDietPrices(row));
+    const retry = await admin.from('event_catalog').insert(stripped).select(EVENT_SELECT).single();
     data = retry.data;
     error = retry.error;
     warning = DIET_PRICE_WARNING;

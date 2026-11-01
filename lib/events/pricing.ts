@@ -8,7 +8,7 @@ import type { EventCatalog } from '@/lib/events/types';
 export function eventToPricing(event: Pick<
   EventCatalog,
   'lunch_paise' | 'dinner_paise' | 'parking_2w_paise' | 'parking_4w_paise' | 'base_ticket_paise'
-> & Partial<Pick<EventCatalog, 'lunch_nonveg_paise' | 'dinner_nonveg_paise'>>): EventPricing {
+> & Partial<Pick<EventCatalog, 'lunch_nonveg_paise' | 'dinner_nonveg_paise' | 'fee_batch_from' | 'fee_batch_to'>>): EventPricing {
   return {
     lunch_paise: event.lunch_paise,
     dinner_paise: event.dinner_paise,
@@ -17,7 +17,18 @@ export function eventToPricing(event: Pick<
     parking_2w_paise: event.parking_2w_paise,
     parking_4w_paise: event.parking_4w_paise,
     base_ticket_paise: event.base_ticket_paise,
+    fee_batch_from: event.fee_batch_from ?? null,
+    fee_batch_to: event.fee_batch_to ?? null,
   };
+}
+
+export { effectiveBaseTicketPaise } from '@/lib/registration';
+
+export function parseOptionalBatchYear(value: unknown): number | null {
+  if (value === undefined || value === null || value === '') return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1900) return null;
+  return n;
 }
 
 function rupees(paise: number | null | undefined) {

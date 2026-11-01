@@ -199,9 +199,12 @@ export async function registerAccountForEvent(
       : guestsFromLegacy(peopleHint, body.food_preference, Boolean(body.lunch), Boolean(body.dinner))
   );
   const summary = legacySummaryFromGuests(guests);
+  const batchRawForFee = body.batch != null && body.batch !== '' ? Number(body.batch) : null;
+  const batchForFee = isValidBatch(batchRawForFee) ? batchRawForFee : me.batch;
   const input = {
     guests,
     parkingNeeded,
+    batch: batchForFee,
   } satisfies CostCalculationInput;
   if (!validateRegistrationCost(pricing, input)) {
     return {

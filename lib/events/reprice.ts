@@ -23,6 +23,10 @@ type StoredReg = {
   amount_paid_paise?: number | null;
   total_cost_paise: number;
   payment_status: string;
+  alumni_accounts?:
+    | { batch?: number | null }
+    | { batch?: number | null }[]
+    | null;
 };
 
 /** Rewrite open registrations for one event from its current catalog rates. Paid amounts stay. */
@@ -40,7 +44,7 @@ export async function repriceEventRegistrations(eventId: string): Promise<number
   const { data: rows, error: regError } = await admin
     .from('event_registrations')
     .select(
-      'id,account_id,number_of_guests,food_preference,lunch,dinner,guests,parking_needed,amount_paid_paise,total_cost_paise,payment_status'
+      'id,account_id,number_of_guests,food_preference,lunch,dinner,guests,parking_needed,amount_paid_paise,total_cost_paise,payment_status,alumni_accounts(batch)'
     )
     .eq('event_id', id)
     .in('payment_status', [...OPEN_PAYMENT_STATUSES]);
@@ -51,7 +55,15 @@ export async function repriceEventRegistrations(eventId: string): Promise<number
 
   let updated = 0;
   for (const row of rows as StoredReg[]) {
-    const next = repriceRegistration(pricing, row);
+    const account = Array.isArray(row.alumni_accounts) ? row.alumni_accounts[0] : row.alumni_accounts;
+    const batchRaw = account?.batch;
+    const batch =
+      typeof batchRaw === 'number'
+        ? batchRaw
+        : batchRaw != null && String(batchRaw).trim() !== ''
+          ? Number(batchRaw) || null
+          : null;
+    const next = repriceRegistration(pricing, { ...row, batch });
     if (next.total_cost_paise === row.total_cost_paise && next.payment_status === row.payment_status) {
       continue;
     }

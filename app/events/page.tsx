@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import MemberGate from '@/components/member-gate';
 import PortalShell from '@/components/portal-shell';
+import { registrationFeeLabel } from '@/lib/events/fee-label';
 import { mealPriceSummary } from '@/lib/events/pricing';
 import type { EventCatalog } from '@/lib/events/types';
 
@@ -65,9 +66,10 @@ export default function EventsPage() {
                 {mealPriceSummary(e)} · 2-wheeler ₹
                 {(e.parking_2w_paise / 100).toFixed(0)} · 4-wheeler ₹
                 {(e.parking_4w_paise / 100).toFixed(0)}
-                {e.base_ticket_paise > 0
-                  ? ` · Registration fee ₹${(e.base_ticket_paise / 100).toFixed(0)} / person`
-                  : ''}
+                {(() => {
+                  const label = registrationFeeLabel(e);
+                  return label ? ` · ${label}` : '';
+                })()}
               </p>
               <Link
                 href={`/registration?event=${e.id}`}

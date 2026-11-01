@@ -115,6 +115,8 @@ export type CostCalculationInput = {
   parkingNeeded: ParkingNeeded;
   foodPreference?: FoodPreference;
   guests?: GuestChoice[];
+  /** Alumnus batch year — used for registration-fee range exceptions. */
+  batch?: number | null;
 };
 
 export type EventPricing = {
@@ -127,6 +129,9 @@ export type EventPricing = {
   parking_2w_paise: number;
   parking_4w_paise: number;
   base_ticket_paise: number;
+  /** Inclusive batch bounds for fee; both null = fee applies to all. */
+  fee_batch_from?: number | null;
+  fee_batch_to?: number | null;
 };
 
 function mealRatePaise(pricing: EventPricing, meal: 'lunch' | 'dinner', foodPreference?: string): number {
@@ -135,6 +140,29 @@ function mealRatePaise(pricing: EventPricing, meal: 'lunch' | 'dinner', foodPref
   const nonveg = meal === 'lunch' ? pricing.lunch_nonveg_paise : pricing.dinner_nonveg_paise;
   if (nonveg == null || !Number.isFinite(Number(nonveg))) return veg;
   return Math.max(0, Number(nonveg));
+}
+
+/** Registration fee per person after batch-range rules. Both bounds null = all batches. */
+export function effectiveBaseTicketPaise(
+  pricing: Pick<EventPricing, 'base_ticket_paise' | 'fee_batch_from' | 'fee_batch_to'>,
+  batch?: number | null
+): number {
+  const rate = Math.max(0, Number(pricing.base_ticket_paise) || 0);
+  if (rate <= 0) return 0;
+  const fromRaw = pricing.fee_batch_from;
+  const toRaw = pricing.fee_batch_to;
+  const fromSet = fromRaw != null && Number.isFinite(Number(fromRaw));
+  const toSet = toRaw != null && Number.isFinite(Number(toRaw));
+  if (!fromSet && !toSet) return rate;
+  if (batch == null || !Number.isFinite(Number(batch))) return 0;
+  const batchYear = Math.floor(Number(batch));
+  if (fromSet && toSet) {
+    const lo = Math.min(Number(fromRaw), Number(toRaw));
+    const hi = Math.max(Number(fromRaw), Number(toRaw));
+    return batchYear >= lo && batchYear <= hi ? rate : 0;
+  }
+  const only = fromSet ? Number(fromRaw) : Number(toRaw);
+  return batchYear === only ? rate : 0;
 }
 
 /** @deprecated Prefer event catalog rates; kept for interim call sites. */
@@ -220,7 +248,7 @@ export function getEventCostBreakdown(
         ? pricing.parking_4w_paise || 0
         : 0;
 
-  const baseRate = pricing.base_ticket_paise || 0;
+  const baseRate = effectiveBaseTicketPaise(pricing, input.batch);
   const baseCost = totalPeople * baseRate;
   const counts = guestMealCounts(guests);
 
@@ -293,6 +321,6 @@ export function validateRegistrationCost(
   const guests = guestsForPricing(pricing, input);
   const hasMeal = guests.some((g) => g.lunch || g.dinner);
   const hasParking = input.parkingNeeded !== 'none';
-  const hasBase = (pricing.base_ticket_paise || 0) > 0;
+  const hasBase = effectiveBaseTicketPaise(pricing, input.batch) > 0;
   return hasMeal || hasParking || hasBase;
 }

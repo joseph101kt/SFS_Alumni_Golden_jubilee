@@ -159,4 +159,23 @@ assert(
   'breakdown omits zero-priced dinner'
 );
 
+const ranged = {
+  ...jubilee,
+  base_ticket_paise: 10000,
+  fee_batch_from: 1986,
+  fee_batch_to: 2000,
+};
+assert(
+  calculateEventRegistrationCost(ranged, { ...input, numberOfGuests: 1, batch: 1990 }) === 110000,
+  'batch in range pays registration fee'
+);
+assert(
+  calculateEventRegistrationCost(ranged, { ...input, numberOfGuests: 1, batch: 2010 }) === 100000,
+  'batch outside range pays no registration fee'
+);
+assert(
+  getEventCostBreakdown(ranged, { ...input, numberOfGuests: 1, batch: 2010 }).baseCost === 0,
+  'outside range baseCost is 0'
+);
+
 console.log('PASS event registration cost');

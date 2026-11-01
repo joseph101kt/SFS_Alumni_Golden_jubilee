@@ -5,10 +5,11 @@ import {
   EVENT_SELECT_DIET,
   selectCatalog,
   withoutDietPrices,
+  withoutFeeBatch,
 } from '@/lib/events/catalog-select';
 import { missingColumn } from '@/lib/events/registration-code';
 import { EVENT_SELECT } from '@/lib/events/types';
-import { parseNonNegInt } from '@/lib/events/pricing';
+import { parseNonNegInt, parseOptionalBatchYear } from '@/lib/events/pricing';
 import { repriceEventRegistrations } from '@/lib/events/reprice';
 import { createAdminClient } from '@/lib/supabase-admin';
 
@@ -48,6 +49,8 @@ export async function PATCH(request: Request, ctx: Ctx) {
   if (body.parking_2w_paise !== undefined) patch.parking_2w_paise = parseNonNegInt(body.parking_2w_paise);
   if (body.parking_4w_paise !== undefined) patch.parking_4w_paise = parseNonNegInt(body.parking_4w_paise);
   if (body.base_ticket_paise !== undefined) patch.base_ticket_paise = parseNonNegInt(body.base_ticket_paise);
+  if (body.fee_batch_from !== undefined) patch.fee_batch_from = parseOptionalBatchYear(body.fee_batch_from);
+  if (body.fee_batch_to !== undefined) patch.fee_batch_to = parseOptionalBatchYear(body.fee_batch_to);
   if (body.is_primary !== undefined) patch.is_primary = Boolean(body.is_primary);
 
   if (patch.title === '' || patch.summary === '') {
@@ -69,7 +72,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
   if (error && missingColumn(error)) {
     const retry = await admin
       .from('event_catalog')
-      .update(withoutDietPrices(patch))
+      .update(withoutFeeBatch(withoutDietPrices(patch)))
       .eq('id', id)
       .select(EVENT_SELECT)
       .maybeSingle();
@@ -91,6 +94,8 @@ export async function PATCH(request: Request, ctx: Ctx) {
     'parking_2w_paise',
     'parking_4w_paise',
     'base_ticket_paise',
+    'fee_batch_from',
+    'fee_batch_to',
   ].some((key) => body[key] !== undefined);
   if (pricingTouched) await repriceEventRegistrations(id);
 

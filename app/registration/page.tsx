@@ -484,6 +484,7 @@ function RegistrationPageInner() {
     const costBreakdown = getEventCostBreakdown(eventPricing, {
         guests: formData.guests,
         parkingNeeded: formData.parking_needed,
+        batch: formData.batch ?? null,
     });
     const totalCost = costBreakdown.totalCost;
 
@@ -535,6 +536,7 @@ function RegistrationPageInner() {
             !validateRegistrationCost(eventPricing, {
                 guests: formData.guests,
                 parkingNeeded: formData.parking_needed,
+                batch: formData.batch ?? null,
             })
         ) {
             setError('Select at least one meal or parking (or the event needs a registration fee)');

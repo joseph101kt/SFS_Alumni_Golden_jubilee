@@ -17,6 +17,7 @@ type RepriceRow = {
   food_preference?: string | null;
   guests?: GuestChoice[] | null;
   amount_paid_paise?: number | null;
+  batch?: number | null;
 };
 
 export function repriceRegistration(pricing: EventPricing, row: RepriceRow) {
@@ -31,6 +32,7 @@ export function repriceRegistration(pricing: EventPricing, row: RepriceRow) {
   const total_cost_paise = calculateEventRegistrationCost(pricing, {
     guests,
     parkingNeeded,
+    batch: row.batch ?? null,
   });
   const amount_paid_paise = Math.max(0, Math.floor(Number(row.amount_paid_paise) || 0));
   const payment_status = statusFromAmounts(total_cost_paise, amount_paid_paise);
