@@ -83,7 +83,7 @@ export default function MemberGate({
               : 'The alumni database is not fully configured. Apply the alumni_accounts migration and set AUTH_SECRET plus SUPABASE_SERVICE_ROLE_KEY.';
 
   return (
-    <section className="max-w-2xl rounded-2xl border border-outline-variant bg-white p-8">
+    <section className="max-w-3xl rounded-2xl border border-outline-variant bg-white p-8">
       <h2 className="text-headline-sm text-primary">{title}</h2>
       <p className="text-body-sm text-on-surface-variant mt-3">{body}</p>
       {state === 'signed-out' && (

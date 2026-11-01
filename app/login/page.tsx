@@ -61,7 +61,7 @@ function LoginForm() {
 
     return (
         <div className="min-h-screen bg-surface flex items-center justify-center px-6 pt-20">
-            <div className="w-full max-w-md">
+            <div className="w-full max-w-lg">
                 {/* Logo & Header */}
                 <div className="text-center mb-8">
                     <div className="flex justify-center mb-4">
@@ -93,7 +93,7 @@ function LoginForm() {
                                 required
                                 autoComplete="username"
                                 disabled={loading}
-                                className="px-4 py-3 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:bg-surface-container disabled:text-on-surface-variant"
+                                className="px-4 py-3.5 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:bg-surface-container disabled:text-on-surface-variant"
                             />
                             <p className="text-label-sm text-on-surface-variant mt-1">
                                 Your email is your username unless you chose a different one.
@@ -112,7 +112,7 @@ function LoginForm() {
                                 autoComplete="current-password"
                                 required
                                 disabled={loading}
-                                className="px-4 py-3 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:bg-surface-container disabled:text-on-surface-variant"
+                                className="px-4 py-3.5 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:bg-surface-container disabled:text-on-surface-variant"
                             />
                         </div>
 

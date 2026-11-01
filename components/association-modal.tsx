@@ -67,9 +67,9 @@ export default function AssociationModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative z-[81] w-full sm:max-w-2xl max-h-[90vh] overflow-hidden rounded-t-2xl sm:rounded-2xl bg-surface-paper border border-outline-variant shadow-xl flex flex-col"
+        className="relative z-[81] w-full sm:max-w-3xl max-h-[92vh] overflow-hidden rounded-t-2xl sm:rounded-2xl bg-surface-paper border border-outline-variant shadow-xl flex flex-col"
       >
-        <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3 border-b border-outline-variant">
+        <div className="flex items-start justify-between gap-3 px-6 pt-6 pb-4 border-b border-outline-variant">
           <div>
             <p className="text-label-sm uppercase tracking-widest text-jubilee-gold-deep font-bold">
               SFS Alumni
@@ -93,7 +93,7 @@ export default function AssociationModal({
           </button>
         </div>
 
-        <div className="overflow-y-auto px-5 py-4 flex-1">
+        <div className="overflow-y-auto px-6 py-5 flex-1">
           {members === null && (
             <p className="text-body-sm text-on-surface-variant py-6 text-center">Loading…</p>
           )}

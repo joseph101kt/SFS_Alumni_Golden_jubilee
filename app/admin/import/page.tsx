@@ -98,7 +98,7 @@ export default function AdminImportPage() {
 
   return (
     <AdminShell title="Import alumni">
-      <form onSubmit={onSubmit} className="max-w-xl space-y-4">
+      <form onSubmit={onSubmit} className="max-w-2xl space-y-4">
         <p className="text-body-sm text-navy-subtle">
           Upload the alumni workbook, including a second time. New people are saved with the password
           below. People who already have an account keep their username and password. The username
@@ -137,7 +137,7 @@ export default function AdminImportPage() {
             required
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="w-full px-3 py-3 rounded-lg border border-primary/15 text-body-md bg-surface-ivory focus:outline-none focus-visible:ring-2 focus-visible:ring-jubilee-gold-deep"
+            className="w-full px-4 py-3.5 rounded-lg border border-primary/15 text-body-md bg-surface-ivory focus:outline-none focus-visible:ring-2 focus-visible:ring-jubilee-gold-deep"
           />
         </label>
         <button
@@ -150,7 +150,7 @@ export default function AdminImportPage() {
       </form>
 
       {message && (
-        <p role="alert" className="mt-5 rounded-xl border border-error/30 bg-error-container p-4 text-body-sm text-error max-w-xl">
+        <p role="alert" className="mt-5 rounded-xl border border-error/30 bg-error-container p-4 text-body-sm text-error max-w-2xl">
           {message}
         </p>
       )}
@@ -186,14 +186,14 @@ export default function AdminImportPage() {
               </button>
             </div>
           </div>
-          <label className="block max-w-sm mb-4" htmlFor="find-person">
+          <label className="block max-w-md mb-4" htmlFor="find-person">
             <span className="sr-only">Find a person</span>
             <input
               id="find-person"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Find a person"
-              className="w-full px-3 py-2.5 rounded-lg border border-primary/15 text-body-sm bg-surface-ivory focus:outline-none focus-visible:ring-2 focus-visible:ring-jubilee-gold-deep"
+              className="w-full px-4 py-3.5 rounded-lg border border-primary/15 text-body-sm bg-surface-ivory focus:outline-none focus-visible:ring-2 focus-visible:ring-jubilee-gold-deep"
             />
           </label>
           <div className="overflow-x-auto rounded-2xl border border-primary/10 bg-surface-paper shadow-sm">

@@ -64,14 +64,14 @@ export default function PortalShell({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 print:max-w-none print:px-0">
         <div className="flex gap-4 sm:gap-6 lg:gap-10 items-start">
           {sidebar ? (
-            <aside className="print:hidden w-[7.25rem] sm:w-44 lg:w-52 shrink-0 sticky top-28 self-start rounded-2xl border border-outline-variant bg-surface-paper p-2.5 sm:p-4">
-              <p className="text-xs sm:text-sm font-extrabold text-primary tracking-tight px-1.5 sm:px-1 leading-tight">
+            <aside className="print:hidden w-32 sm:w-48 lg:w-56 shrink-0 sticky top-28 self-start rounded-2xl border border-outline-variant bg-surface-paper p-3 sm:p-4">
+              <p className="text-sm sm:text-base font-extrabold text-primary tracking-tight px-1.5 sm:px-1 leading-tight">
                 SFS Alumni
               </p>
-              <p className="text-[9px] sm:text-[10px] uppercase tracking-[0.12em] text-jubilee-gold-deep font-bold px-1.5 sm:px-1 mb-2 sm:mb-3">
+              <p className="text-[11px] sm:text-[12px] uppercase tracking-[0.12em] text-jubilee-gold-deep font-bold px-1.5 sm:px-1 mb-2 sm:mb-3">
                 Golden Jubilee
               </p>
-              <nav aria-label="Alumni portal" className="flex flex-col gap-0.5">
+              <nav aria-label="Alumni portal" className="flex flex-col gap-1">
                 {links.map(({ href, label, emphasize }) => {
                   const active = linkActive(path, href);
                   if (emphasize && !active) {
@@ -79,7 +79,7 @@ export default function PortalShell({
                       <Link
                         key={href}
                         href={href}
-                        className="donate-flash-nav rounded-lg px-2 sm:px-3 py-2 sm:py-2.5 text-[12px] sm:text-sm leading-snug border border-transparent cursor-pointer"
+                        className="donate-flash-nav rounded-lg px-2.5 sm:px-3 py-2.5 sm:py-3 text-[14px] sm:text-base leading-snug border border-transparent cursor-pointer"
                       >
                         {label}
                       </Link>
@@ -89,7 +89,7 @@ export default function PortalShell({
                     <Link
                       key={href}
                       href={href}
-                      className={`rounded-lg px-2 sm:px-3 py-2 sm:py-2.5 text-[12px] sm:text-sm font-medium leading-snug transition-colors cursor-pointer ${
+                      className={`rounded-lg px-2.5 sm:px-3 py-2.5 sm:py-3 text-[14px] sm:text-base font-medium leading-snug transition-colors cursor-pointer ${
                         active
                           ? 'bg-primary text-on-primary'
                           : 'text-on-surface-variant hover:bg-surface-container hover:text-primary'
@@ -110,7 +110,7 @@ export default function PortalShell({
               </div>
               <h1 className="text-headline-lg text-primary leading-tight">{title}</h1>
               {intro ? (
-                <p className="text-body-md text-on-surface-variant mt-2 max-w-2xl">{intro}</p>
+                <p className="text-body-md text-on-surface-variant mt-2 max-w-3xl">{intro}</p>
               ) : null}
             </div>
 

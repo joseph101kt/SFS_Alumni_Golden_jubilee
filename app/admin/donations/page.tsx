@@ -124,7 +124,7 @@ export default function AdminDonationsPage() {
 
   return (
     <AdminShell title="Donations">
-      <p className="text-body-sm text-on-surface-variant mb-6 max-w-2xl">
+      <p className="text-body-sm text-on-surface-variant mb-6 max-w-3xl">
         Set up <strong>donation types</strong> (what members can give to), then track gifts that
         come in through Razorpay.
       </p>
@@ -152,7 +152,7 @@ export default function AdminDonationsPage() {
                 onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                 disabled={busy}
                 placeholder="e.g. Scholarship fund"
-                className="mt-1 w-full px-3 py-2.5 rounded-lg border border-outline-variant text-body-sm"
+                className="mt-1 w-full px-4 py-3.5 rounded-lg border border-outline-variant text-body-sm"
               />
             </label>
             <label className="block">
@@ -165,7 +165,7 @@ export default function AdminDonationsPage() {
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                 disabled={busy}
                 placeholder="Shown under the name when alumni choose where to give"
-                className="mt-1 w-full px-3 py-2.5 rounded-lg border border-outline-variant text-body-sm resize-y"
+                className="mt-1 w-full px-4 py-3.5 rounded-lg border border-outline-variant text-body-sm resize-y"
               />
             </label>
             <label className="block">
@@ -177,7 +177,7 @@ export default function AdminDonationsPage() {
                 value={form.sort_order}
                 onChange={(e) => setForm((f) => ({ ...f, sort_order: e.target.value }))}
                 disabled={busy}
-                className="mt-1 w-full px-3 py-2.5 rounded-lg border border-outline-variant text-body-sm"
+                className="mt-1 w-full px-4 py-3.5 rounded-lg border border-outline-variant text-body-sm"
               />
               <span className="text-body-sm text-on-surface-variant">Lower numbers appear first.</span>
             </label>

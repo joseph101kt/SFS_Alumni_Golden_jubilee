@@ -123,7 +123,7 @@ function ResetPasswordRequestForm() {
 
   return (
     <div className="min-h-screen bg-surface flex items-center justify-center px-6 pt-20 pb-16">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-lg">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
             <img
@@ -299,7 +299,7 @@ function ResetPasswordRequestForm() {
 }
 
 const inputClass =
-  'w-full px-4 py-3 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:bg-surface-container';
+  'w-full px-4 py-3.5 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:bg-surface-container';
 
 const btnClass =
   'w-full py-3 rounded-lg bg-primary text-on-primary text-label-md uppercase tracking-wider font-bold hover:bg-navy-subtle disabled:bg-surface-container disabled:text-on-surface-variant transition-all';

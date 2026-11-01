@@ -115,7 +115,7 @@ export default function SearchableSelect({
             if (value) onChange('');
           }}
           onKeyDown={onKeyDown}
-          className="min-w-0 flex-1 px-4 py-3 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:opacity-50"
+          className="min-w-0 flex-1 px-4 py-3.5 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:opacity-50"
         />
         {value && !disabled && (
           <button
@@ -133,7 +133,7 @@ export default function SearchableSelect({
         <ul
           id={listId}
           role="listbox"
-          className="absolute z-30 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-outline-variant bg-surface-paper shadow-md"
+          className="absolute z-30 mt-1 max-h-72 w-full overflow-auto rounded-lg border border-outline-variant bg-surface-paper shadow-md"
         >
           {filtered.length === 0 ? (
             <li className="px-4 py-3 text-body-sm text-on-surface-variant">{emptyLabel}</li>

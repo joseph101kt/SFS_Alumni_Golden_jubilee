@@ -87,7 +87,7 @@ export default function RecoveryQuestionsPage() {
         ) : (
           <form
             onSubmit={onSubmit}
-            className="max-w-lg rounded-2xl border border-outline-variant bg-surface-paper p-6 space-y-4"
+            className="max-w-xl rounded-2xl border border-outline-variant bg-surface-paper p-6 space-y-4"
           >
             {configured && (
               <p className="text-body-sm text-on-surface-variant">
@@ -105,7 +105,7 @@ export default function RecoveryQuestionsPage() {
                 onChange={(e) => setQ1(e.target.value)}
                 required
                 disabled={busy}
-                className="w-full px-4 py-3 rounded-lg border border-outline-variant text-body-sm bg-surface"
+                className="w-full px-4 py-3.5 rounded-lg border border-outline-variant text-body-sm bg-surface"
               >
                 <option value="">Select…</option>
                 {q1Options.map((q) => (
@@ -123,7 +123,7 @@ export default function RecoveryQuestionsPage() {
                 disabled={busy}
                 placeholder="Your answer"
                 autoComplete="off"
-                className="mt-2 w-full px-4 py-3 rounded-lg border border-outline-variant text-body-sm bg-surface"
+                className="mt-2 w-full px-4 py-3.5 rounded-lg border border-outline-variant text-body-sm bg-surface"
               />
             </div>
 
@@ -137,7 +137,7 @@ export default function RecoveryQuestionsPage() {
                 onChange={(e) => setQ2(e.target.value)}
                 required
                 disabled={busy}
-                className="w-full px-4 py-3 rounded-lg border border-outline-variant text-body-sm bg-surface"
+                className="w-full px-4 py-3.5 rounded-lg border border-outline-variant text-body-sm bg-surface"
               >
                 <option value="">Select…</option>
                 {q2Options.map((q) => (
@@ -155,7 +155,7 @@ export default function RecoveryQuestionsPage() {
                 disabled={busy}
                 placeholder="Your answer"
                 autoComplete="off"
-                className="mt-2 w-full px-4 py-3 rounded-lg border border-outline-variant text-body-sm bg-surface"
+                className="mt-2 w-full px-4 py-3.5 rounded-lg border border-outline-variant text-body-sm bg-surface"
               />
             </div>
 

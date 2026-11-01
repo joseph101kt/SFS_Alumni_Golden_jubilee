@@ -110,7 +110,7 @@ export default function MemberPage() {
               Support SFS
             </p>
             <h2 className="text-headline-sm mt-1">Donate to a cause</h2>
-            <p className="text-body-sm mt-1 opacity-90 max-w-xl">
+            <p className="text-body-sm mt-1 opacity-90 max-w-2xl">
               Jubilee, students, or the association — pick a cause and give in a few taps.
             </p>
           </div>
@@ -142,7 +142,7 @@ export default function MemberPage() {
             1976–2026 · Golden Jubilee
           </div>
           <h2 className="text-headline-md mt-2">Once SFS, always SFS.</h2>
-          <p className="text-body-sm text-white/80 mt-2 max-w-xl">
+          <p className="text-body-sm text-white/80 mt-2 max-w-2xl">
             Reconnect with your batch, contribute a memory, or help a younger generation find their way.
           </p>
           <div className="mt-4">

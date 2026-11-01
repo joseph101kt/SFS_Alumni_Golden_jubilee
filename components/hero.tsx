@@ -84,7 +84,7 @@ export default function Hero() {
         <div
           ref={scroller}
           onScroll={onScroll}
-          className="grid w-full min-w-0 max-w-2xl grid-flow-col auto-cols-[100%] overflow-x-auto snap-x snap-proximity [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="grid w-full min-w-0 max-w-3xl grid-flow-col auto-cols-[100%] overflow-x-auto snap-x snap-proximity [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           aria-roledescription={events.length > 1 ? 'carousel' : undefined}
           aria-label={events.length > 1 ? 'Open events' : undefined}
         >
@@ -100,7 +100,7 @@ export default function Hero() {
                 {slide.title}
               </h1>
               {slide.body ? (
-                <p className="text-body-md lg:text-body-lg text-surface-container-high leading-relaxed mb-3 max-w-xl line-clamp-4">
+                <p className="text-body-md lg:text-body-lg text-surface-container-high leading-relaxed mb-3 max-w-2xl line-clamp-4">
                   {slide.body}
                 </p>
               ) : null}

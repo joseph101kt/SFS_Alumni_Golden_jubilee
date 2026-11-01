@@ -206,7 +206,7 @@ export default function HomePage() {
         <section className="w-full bg-surface-bright py-16 lg:py-20" id="gallery-section">
           <div className="max-w-7xl mx-auto px-6 lg:px-12">
             {/* Section Header */}
-            <div className="text-center max-w-2xl mx-auto mb-12">
+            <div className="text-center max-w-3xl mx-auto mb-12">
               <span className="text-label-sm uppercase tracking-widest text-jubilee-gold-deep font-bold">
                 Historical & Campus Archives
               </span>
@@ -264,7 +264,7 @@ export default function HomePage() {
                 </span>
               </div>
 
-              <p className="text-body-sm text-on-surface-variant max-w-sm mb-6">
+              <p className="text-body-sm text-on-surface-variant max-w-md mb-6">
                 North Lalaguda, Shanthinagar, Secunderabad - 500017, Telangana, India
               </p>
 

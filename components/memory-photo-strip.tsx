@@ -131,7 +131,7 @@ export default function MemoryPhotoStrip({
         )}
       </div>
 
-      <div className="relative mx-auto w-full max-w-md" style={{ perspective: '1200px' }}>
+      <div className="relative mx-auto w-full max-w-lg" style={{ perspective: '1200px' }}>
         <div className="relative h-[320px] sm:h-[360px]">
           {stack
             .slice()

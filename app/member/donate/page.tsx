@@ -155,7 +155,7 @@ export default function MemberDonatePage() {
     <PortalShell title="Donate" intro="Support a cause that matters to SFS.">
       <MemberGate>
         {success ? (
-          <section className="rounded-2xl border border-outline-variant bg-white p-6 sm:p-8 max-w-lg">
+          <section className="rounded-2xl border border-outline-variant bg-white p-6 sm:p-8 max-w-xl">
             <p className="text-label-sm uppercase tracking-widest text-jubilee-gold-deep font-bold">
               Thank you
             </p>
@@ -186,7 +186,7 @@ export default function MemberDonatePage() {
         ) : (
           <form
             onSubmit={onPay}
-            className="rounded-2xl border border-outline-variant bg-white p-5 sm:p-7 max-w-lg space-y-5"
+            className="rounded-2xl border border-outline-variant bg-white p-5 sm:p-7 max-w-xl space-y-5"
           >
             <div>
               <p className="text-label-sm uppercase tracking-wider text-primary mb-2">Cause</p>
@@ -276,7 +276,7 @@ export default function MemberDonatePage() {
                     onChange={(e) => setCustomRupees(e.target.value)}
                     disabled={busy}
                     placeholder="Amount in ₹"
-                    className="w-full px-3 py-2.5 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary"
+                    className="w-full px-4 py-3.5 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary"
                   />
                 </label>
               ) : null}
@@ -292,7 +292,7 @@ export default function MemberDonatePage() {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 disabled={busy}
-                className="mt-1 w-full px-3 py-2.5 rounded-lg border border-outline-variant text-body-sm bg-surface resize-y focus:outline-none focus:border-primary"
+                className="mt-1 w-full px-4 py-3.5 rounded-lg border border-outline-variant text-body-sm bg-surface resize-y focus:outline-none focus:border-primary"
                 placeholder="A short note with your gift"
               />
               <span className="text-body-sm text-on-surface-variant">

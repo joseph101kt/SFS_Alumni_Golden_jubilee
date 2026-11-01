@@ -39,7 +39,7 @@ export default function ResetPasswordConfirmPage() {
 
   return (
     <div className="min-h-screen bg-surface flex items-center justify-center px-6 pt-20">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-lg">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
             <img
@@ -70,7 +70,7 @@ export default function ResetPasswordConfirmPage() {
                 autoComplete="new-password"
                 required
                 disabled={loading}
-                className="px-4 py-3 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:bg-surface-container"
+                className="px-4 py-3.5 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:bg-surface-container"
               />
             </div>
             <div className="flex flex-col">
@@ -87,7 +87,7 @@ export default function ResetPasswordConfirmPage() {
                 autoComplete="new-password"
                 required
                 disabled={loading}
-                className="px-4 py-3 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:bg-surface-container"
+                className="px-4 py-3.5 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:bg-surface-container"
               />
             </div>
 

@@ -75,11 +75,11 @@ export default function NavBar() {
                             St. Francis de Sales' High School
                         </span>
                         <div className="flex items-center gap-1.5 sm:gap-2 truncate">
-                            <span className="text-[10px] sm:text-label-sm uppercase tracking-widest text-on-surface-variant truncate">
+                            <span className="text-[12px] sm:text-label-sm uppercase tracking-widest text-on-surface-variant truncate">
                                 Shanthinagar, Secunderabad
                             </span>
                             <span className="inline-block w-1 h-1 rounded-full bg-jubilee-amber flex-shrink-0"></span>
-                            <span className="text-[10px] sm:text-label-sm uppercase tracking-wider text-jubilee-gold-deep font-bold truncate">
+                            <span className="text-[12px] sm:text-label-sm uppercase tracking-wider text-jubilee-gold-deep font-bold truncate">
                                 Est. 1976
                             </span>
                         </div>

@@ -173,7 +173,7 @@ export default function AdminEventForm({ event }: { event?: EventCatalog | null 
   }
 
   const field =
-    'w-full px-4 py-3 rounded-lg border border-primary/15 text-body-sm bg-surface-ivory focus:outline-none focus:border-jubilee-gold-deep focus:ring-2 focus:ring-secondary-container/40';
+    'w-full px-4 py-3.5 rounded-lg border border-primary/15 text-body-sm bg-surface-ivory focus:outline-none focus:border-jubilee-gold-deep focus:ring-2 focus:ring-secondary-container/40';
   const label = 'block text-label-sm text-navy-subtle mb-1.5 font-medium';
 
   return (

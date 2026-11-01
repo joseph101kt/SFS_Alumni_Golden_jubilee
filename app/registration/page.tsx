@@ -764,7 +764,7 @@ function RegistrationPageInner() {
     if (gate === 'admin') {
         return (
             <div className="min-h-screen bg-surface flex items-center justify-center px-6 pt-20">
-                <div className="w-full max-w-md bg-surface-paper rounded-2xl shadow-lg p-8 border border-surface-container-low text-center">
+                <div className="w-full max-w-lg bg-surface-paper rounded-2xl shadow-lg p-8 border border-surface-container-low text-center">
                     <span className="material-symbols-outlined text-[48px] text-jubilee-gold-deep mx-auto block mb-4">
                         admin_panel_settings
                     </span>
@@ -825,7 +825,7 @@ function RegistrationPageInner() {
     if (eventError && !event) {
         return (
             <div className="min-h-screen bg-surface flex items-center justify-center px-6 pt-20">
-                <div className="w-full max-w-md bg-surface-paper rounded-2xl shadow-lg p-8 border border-surface-container-low text-center">
+                <div className="w-full max-w-lg bg-surface-paper rounded-2xl shadow-lg p-8 border border-surface-container-low text-center">
                     <h1 className="text-headline-lg text-primary mb-3">Event unavailable</h1>
                     <p className="text-body-md text-on-surface-variant mb-8">{eventError}</p>
                     <Link
@@ -843,7 +843,7 @@ function RegistrationPageInner() {
     if (!user) {
         return (
             <div className="min-h-screen bg-surface flex items-center justify-center px-6 pt-20">
-                <div className="w-full max-w-md">
+                <div className="w-full max-w-lg">
                     <div className="bg-surface-paper rounded-2xl shadow-lg p-8 border border-surface-container-low text-center">
                         <div className="mb-6">
                             <span className="material-symbols-outlined text-[48px] text-jubilee-gold-deep mx-auto block">
@@ -906,7 +906,7 @@ function RegistrationPageInner() {
     if (currentStep === 'confirm_prefill' && preRegData) {
         return (
             <div className="min-h-screen bg-surface flex items-center justify-center px-6 pt-20 pb-12">
-                <div className="w-full max-w-2xl">
+                <div className="w-full max-w-3xl">
                     <div className="bg-surface-paper rounded-2xl shadow-lg p-8 border border-surface-container-low">
                         <h1 className="text-headline-lg text-primary mb-2">
                             We found your information
@@ -985,7 +985,7 @@ function RegistrationPageInner() {
     if (currentStep === 'details') {
         return (
             <div className="min-h-screen bg-surface flex items-center justify-center px-6 pt-20 pb-12">
-                <div className="w-full max-w-2xl">
+                <div className="w-full max-w-3xl">
                     <div className="bg-surface-paper rounded-2xl shadow-lg p-8 border border-surface-container-low">
                         <h1 className="text-headline-lg text-primary mb-2">
                             {formMode === 'update'
@@ -1031,7 +1031,7 @@ function RegistrationPageInner() {
                                             }
                                             required
                                             disabled={busy}
-                                            className="px-4 py-3 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:opacity-50"
+                                            className="px-4 py-3.5 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:opacity-50"
                                         />
                                     </div>
 
@@ -1046,7 +1046,7 @@ function RegistrationPageInner() {
                                                 setFormData({ ...formData, last_name: e.target.value })
                                             }
                                             disabled={busy}
-                                            className="px-4 py-3 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:opacity-50"
+                                            className="px-4 py-3.5 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:opacity-50"
                                         />
                                     </div>
 
@@ -1063,7 +1063,7 @@ function RegistrationPageInner() {
                                             placeholder="you@gmail.com"
                                             required
                                             disabled={busy}
-                                            className="px-4 py-3 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:opacity-50"
+                                            className="px-4 py-3.5 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:opacity-50"
                                         />
                                         <p className="text-label-sm text-on-surface-variant mt-1">
                                             Public email only (Gmail, Yahoo, Outlook, iCloud, Proton, Rediffmail, AOL, Zoho)
@@ -1105,7 +1105,7 @@ function RegistrationPageInner() {
                                                 aria-invalid={Boolean(
                                                     phoneNational && phoneValidationError(phoneIsd, phoneNational)
                                                 )}
-                                                className="min-w-0 flex-1 px-4 py-3 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:opacity-50"
+                                                className="min-w-0 flex-1 px-4 py-3.5 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:opacity-50"
                                             />
                                         </div>
                                         <p
@@ -1155,7 +1155,7 @@ function RegistrationPageInner() {
                                             }
                                             required
                                             disabled={busy}
-                                            className="px-4 py-3 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:opacity-50"
+                                            className="px-4 py-3.5 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:opacity-50"
                                         >
                                             <option value="">Select section</option>
                                             {SECTIONS.map((s) => (
@@ -1179,7 +1179,7 @@ function RegistrationPageInner() {
                                             placeholder="City"
                                             required
                                             disabled={busy}
-                                            className="px-4 py-3 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:opacity-50"
+                                            className="px-4 py-3.5 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:opacity-50"
                                         />
                                     </div>
 
@@ -1227,7 +1227,7 @@ function RegistrationPageInner() {
                                             }}
                                             required
                                             disabled={busy}
-                                            className="px-4 py-3 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:opacity-50"
+                                            className="px-4 py-3.5 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:opacity-50"
                                         />
                                         <p className="text-label-sm text-on-surface-variant mt-1">
                                             Include yourself. Set food and meals for each person below.
@@ -1524,7 +1524,7 @@ function RegistrationPageInner() {
     if (currentStep === 'success') {
         return (
             <div className="min-h-screen bg-surface flex items-center justify-center px-6 pt-20">
-                <div className="w-full max-w-md text-center">
+                <div className="w-full max-w-lg text-center">
                     <div className="bg-surface-paper rounded-2xl shadow-lg p-8 border border-surface-container-low">
                         <div className="mb-6">
                             <span className="material-symbols-outlined text-[64px] text-green-600 mx-auto block">
@@ -1587,7 +1587,7 @@ function RegistrationPageInner() {
                                                 guests,
                                             });
                                         }}
-                                        className="h-11 w-11 rounded-lg border border-outline-variant text-headline-sm text-primary hover:bg-surface-container disabled:opacity-40 cursor-pointer"
+                                        className="h-12 w-12 rounded-lg border border-outline-variant text-headline-sm text-primary hover:bg-surface-container disabled:opacity-40 cursor-pointer"
                                     >
                                         −
                                     </button>
@@ -1609,7 +1609,7 @@ function RegistrationPageInner() {
                                                 guests,
                                             });
                                         }}
-                                        className="h-11 w-11 rounded-lg border border-outline-variant text-headline-sm text-primary hover:bg-surface-container disabled:opacity-40 cursor-pointer"
+                                        className="h-12 w-12 rounded-lg border border-outline-variant text-headline-sm text-primary hover:bg-surface-container disabled:opacity-40 cursor-pointer"
                                     >
                                         +
                                     </button>

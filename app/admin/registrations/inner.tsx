@@ -122,7 +122,7 @@ export default function AdminRegistrationsInner() {
         )}
         <div className="flex flex-col md:flex-row gap-3 mb-5">
           <select
-            className="px-3 py-2.5 rounded-lg border border-primary/15 text-body-sm bg-surface-ivory"
+            className="px-4 py-3.5 rounded-lg border border-primary/15 text-body-sm bg-surface-ivory"
             value={eventId}
             onChange={(e) => setEventId(e.target.value)}
           >
@@ -134,7 +134,7 @@ export default function AdminRegistrationsInner() {
             ))}
           </select>
           <select
-            className="px-3 py-2.5 rounded-lg border border-primary/15 text-body-sm bg-surface-ivory"
+            className="px-4 py-3.5 rounded-lg border border-primary/15 text-body-sm bg-surface-ivory"
             value={status}
             onChange={(e) => setStatus(e.target.value)}
           >
@@ -149,7 +149,7 @@ export default function AdminRegistrationsInner() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search name, email, or registration ID…"
-            className="flex-1 px-3 py-2.5 rounded-lg border border-primary/15 text-body-sm bg-surface-ivory focus:outline-none focus:border-jubilee-gold-deep"
+            className="flex-1 px-4 py-3.5 rounded-lg border border-primary/15 text-body-sm bg-surface-ivory focus:outline-none focus:border-jubilee-gold-deep"
           />
           <button
             type="button"

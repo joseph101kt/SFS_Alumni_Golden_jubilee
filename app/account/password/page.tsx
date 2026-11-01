@@ -49,7 +49,7 @@ export default function ChangePasswordPage() {
       <MemberGate>
         <form
           onSubmit={onSubmit}
-          className="max-w-md rounded-2xl border border-outline-variant bg-surface-paper p-6 space-y-4"
+          className="max-w-lg rounded-2xl border border-outline-variant bg-surface-paper p-6 space-y-4"
         >
           <div>
             <label className="text-label-md text-primary mb-2 uppercase tracking-wider block" htmlFor="cur">
@@ -62,7 +62,7 @@ export default function ChangePasswordPage() {
               autoComplete="current-password"
               required
               disabled={busy}
-              className="px-4 py-3 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+              className="px-4 py-3.5 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
             />
           </div>
           <div>
@@ -77,7 +77,7 @@ export default function ChangePasswordPage() {
               required
               minLength={8}
               disabled={busy}
-              className="px-4 py-3 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+              className="px-4 py-3.5 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
             />
           </div>
           <div>
@@ -92,7 +92,7 @@ export default function ChangePasswordPage() {
               required
               minLength={8}
               disabled={busy}
-              className="px-4 py-3 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+              className="px-4 py-3.5 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
             />
           </div>
           {error && (

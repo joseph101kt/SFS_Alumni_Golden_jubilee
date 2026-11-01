@@ -329,7 +329,7 @@ export default function AdminMembershipPage() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search name, email, or phone…"
-              className="w-full px-4 py-3 rounded-lg border border-primary/15 text-body-sm bg-surface-ivory focus:outline-none focus:border-jubilee-gold-deep focus:ring-2 focus:ring-secondary-container/50"
+              className="w-full px-4 py-3.5 rounded-lg border border-primary/15 text-body-sm bg-surface-ivory focus:outline-none focus:border-jubilee-gold-deep focus:ring-2 focus:ring-secondary-container/50"
             />
             <div className="flex flex-wrap gap-2">
               {FILTERS.map((f) => (

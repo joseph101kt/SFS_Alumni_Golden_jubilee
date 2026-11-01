@@ -16,8 +16,9 @@ const needCss = [
   ['--color-background: #faf8f4', 'ivory background'],
   ['--color-primary: #14110f', 'charcoal primary'],
   ['--color-jubilee-gold-deep: #8a6a3a', 'muted bronze'],
-  ['font-size: 44px', 'enlarged headline-lg'],
-  ['font-size: 32px', 'enlarged headline-md'],
+  ['font-size: 46px', 'enlarged headline-lg'],
+  ['font-size: 34px', 'enlarged headline-md'],
+  ['font-size: 17px', 'enlarged body-md'],
 ];
 const needShell = [
   ['Alumni portal', 'portal nav'],

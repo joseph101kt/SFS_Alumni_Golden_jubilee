@@ -120,11 +120,11 @@ function SignupForm() {
     const passwordMismatch = passwordConfirm.length > 0 && password !== passwordConfirm;
     const usernamePreview = username.trim() || email.trim() || 'your email';
     const fieldClass =
-        'px-4 py-3 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:bg-surface-container disabled:text-on-surface-variant';
+        'px-4 py-3.5 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:bg-surface-container disabled:text-on-surface-variant';
 
     return (
         <div className="min-h-screen bg-surface flex items-center justify-center px-6 pt-20">
-            <div className="w-full max-w-md">
+            <div className="w-full max-w-lg">
                 {/* Logo & Header */}
                 <div className="text-center mb-8">
                     <div className="flex justify-center mb-4">
@@ -254,7 +254,7 @@ function SignupForm() {
                                     aria-invalid={Boolean(
                                         phoneNational && phoneValidationError(phoneIsd, phoneNational)
                                     )}
-                                    className="min-w-0 flex-1 px-4 py-3 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:bg-surface-container disabled:text-on-surface-variant"
+                                    className="min-w-0 flex-1 px-4 py-3.5 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:bg-surface-container disabled:text-on-surface-variant"
                                 />
                             </div>
                             <p

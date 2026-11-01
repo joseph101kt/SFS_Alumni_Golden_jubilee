@@ -176,7 +176,7 @@ export default function AdminCommitteePage() {
 
   return (
     <AdminShell title="Committee">
-      <p className="text-body-sm text-on-surface-variant mb-6 max-w-2xl">
+      <p className="text-body-sm text-on-surface-variant mb-6 max-w-3xl">
         Maintain alumni committee members shown on the landing page and About the association.
         Toggle <strong>Published</strong> when ready for the public site.
       </p>
@@ -425,7 +425,7 @@ export default function AdminCommitteePage() {
 }
 
 const inputClass =
-  'w-full px-3 py-2.5 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary';
+  'w-full px-4 py-3.5 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary';
 
 function Field({
   label,
