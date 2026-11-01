@@ -15,6 +15,7 @@ export default function MemberPage() {
   const [firstName, setFirstName] = useState('friend');
   const [batch, setBatch] = useState<number | null>(null);
   const [welcomeReady, setWelcomeReady] = useState(false);
+  const [membershipPending, setMembershipPending] = useState(false);
   const [next, setNext] = useState<PrimaryNextAction | null>(null);
 
   useEffect(() => {
@@ -27,7 +28,10 @@ export default function MemberPage() {
         if (!active) return;
         setFirstName(firstNameFromFullName(String(me.full_name || '')));
         setBatch(typeof me.batch === 'number' ? me.batch : me.batch != null ? Number(me.batch) || null : null);
-        if (me.member_status === 'verified') setWelcomeReady(true);
+        const status = String(me.member_status || '');
+        const blocked = status === 'rejected' || status === 'suspended';
+        if (!blocked) setWelcomeReady(true);
+        setMembershipPending(status === 'pending');
 
         if (me.role === 'admin') {
           setNext(primaryNextAction({ hasRegistration: false, anyUnpaid: false }));
@@ -84,7 +88,14 @@ export default function MemberPage() {
         </section>
       )}
 
-      <MemberGate>
+      <MemberGate mode="signed-in">
+        {membershipPending ? (
+          <p className="mb-5 rounded-xl border border-jubilee-gold-deep/30 bg-secondary-container/40 px-4 py-3 text-body-sm text-on-surface">
+            Your membership is awaiting committee verification. Your venue pass still works here;
+            directory and private alumni pages unlock after approval.
+          </p>
+        ) : null}
+
         <MemberVenuePass />
 
         {next && (

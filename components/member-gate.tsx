@@ -13,10 +13,20 @@ type Me = {
 export default function MemberGate({
   mode = 'verified',
   children,
+  loginNext,
 }: {
-  mode?: 'verified' | 'admin';
+  /** verified = directory-style private pages; signed-in = venue pass / account home. */
+  mode?: 'verified' | 'signed-in' | 'admin';
   children: ReactNode;
+  /** Post-login return path (must pass safeRegistrationNext). */
+  loginNext?: string;
 }) {
+  const loginHref = loginNext
+    ? `/login?next=${encodeURIComponent(loginNext)}`
+    : '/login';
+  const signupHref = loginNext
+    ? `/signup?next=${encodeURIComponent(loginNext)}`
+    : '/signup';
   const [state, setState] = useState('loading');
 
   useEffect(() => {
@@ -38,10 +48,10 @@ export default function MemberGate({
           setState(
             data.role === 'admin' && data.member_status === 'verified' ? 'allowed' : 'forbidden'
           );
-        } else if (data.member_status === 'verified') {
-          setState('allowed');
         } else if (data.member_status === 'rejected' || data.member_status === 'suspended') {
           setState('rejected');
+        } else if (mode === 'signed-in' || data.member_status === 'verified') {
+          setState('allowed');
         } else {
           setState('pending');
         }
@@ -88,10 +98,10 @@ export default function MemberGate({
       <p className="text-body-sm text-on-surface-variant mt-3">{body}</p>
       {state === 'signed-out' && (
         <div className="flex gap-3 mt-5">
-          <Link className="px-5 py-3 rounded-lg bg-primary text-white" href="/login">
+          <Link className="px-5 py-3 rounded-lg bg-primary text-white" href={loginHref}>
             Sign in
           </Link>
-          <Link className="px-5 py-3 rounded-lg bg-secondary-container text-primary" href="/signup">
+          <Link className="px-5 py-3 rounded-lg bg-secondary-container text-primary" href={signupHref}>
             Create account
           </Link>
         </div>
