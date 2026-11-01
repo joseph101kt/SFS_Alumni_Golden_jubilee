@@ -6,8 +6,10 @@ import {
   selectCatalog,
   withoutDietPrices,
   withoutFeeBatch,
+  withoutRefundEmail,
 } from '@/lib/events/catalog-select';
 import { missingColumn } from '@/lib/events/registration-code';
+import { normalizeRefundEmail } from '@/lib/events/refund-mailto';
 import { EVENT_SELECT } from '@/lib/events/types';
 import { parseNonNegInt, parseOptionalBatchYear } from '@/lib/events/pricing';
 import { repriceEventRegistrations } from '@/lib/events/reprice';
@@ -52,6 +54,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
   if (body.fee_batch_from !== undefined) patch.fee_batch_from = parseOptionalBatchYear(body.fee_batch_from);
   if (body.fee_batch_to !== undefined) patch.fee_batch_to = parseOptionalBatchYear(body.fee_batch_to);
   if (body.fee_batch_paise !== undefined) patch.fee_batch_paise = parseNonNegInt(body.fee_batch_paise);
+  if (body.refund_email !== undefined) patch.refund_email = normalizeRefundEmail(body.refund_email);
   if (body.is_primary !== undefined) patch.is_primary = Boolean(body.is_primary);
 
   if (patch.title === '' || patch.summary === '') {
@@ -73,7 +76,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
   if (error && missingColumn(error)) {
     const retry = await admin
       .from('event_catalog')
-      .update(withoutFeeBatch(withoutDietPrices(patch)))
+      .update(withoutRefundEmail(withoutFeeBatch(withoutDietPrices(patch))))
       .eq('id', id)
       .select(EVENT_SELECT)
       .maybeSingle();

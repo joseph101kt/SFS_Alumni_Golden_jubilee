@@ -29,6 +29,7 @@ type FormState = {
   fee_batch_from: string;
   fee_batch_to: string;
   fee_batch_rupees: string;
+  refund_email: string;
 };
 
 function toLocalInput(iso: string | null | undefined) {
@@ -68,6 +69,7 @@ function initialFrom(event?: EventCatalog | null): FormState {
     fee_batch_from: event?.fee_batch_from != null ? String(event.fee_batch_from) : '',
     fee_batch_to: event?.fee_batch_to != null ? String(event.fee_batch_to) : '',
     fee_batch_rupees: paiseToRupeesField(event?.fee_batch_paise ?? 0),
+    refund_email: event?.refund_email || '',
   };
 }
 
@@ -144,6 +146,7 @@ export default function AdminEventForm({ event }: { event?: EventCatalog | null 
       venue: form.venue.trim() || null,
       published: form.published,
       is_primary: form.is_primary,
+      refund_email: form.refund_email.trim() || null,
       ...pricing,
     };
 
@@ -234,6 +237,23 @@ export default function AdminEventForm({ event }: { event?: EventCatalog | null 
               value={form.venue}
               onChange={(e) => setField('venue', e.target.value)}
             />
+          </div>
+          <div>
+            <label className={label} htmlFor="refund_email">
+              Committee refund email
+            </label>
+            <input
+              id="refund_email"
+              type="email"
+              className={field}
+              placeholder="committee@example.org"
+              value={form.refund_email}
+              onChange={(e) => setField('refund_email', e.target.value)}
+            />
+            <p className="text-label-sm text-on-surface-variant mt-1.5">
+              Shown on registration when someone has paid, so they can email a refund request.
+              Leave blank to hide.
+            </p>
           </div>
           <label className="flex items-center gap-2 text-body-sm text-primary cursor-pointer">
             <input

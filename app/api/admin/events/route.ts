@@ -5,8 +5,10 @@ import {
   selectCatalog,
   withoutDietPrices,
   withoutFeeBatch,
+  withoutRefundEmail,
 } from '@/lib/events/catalog-select';
 import { missingColumn } from '@/lib/events/registration-code';
+import { normalizeRefundEmail } from '@/lib/events/refund-mailto';
 import { EVENT_SELECT } from '@/lib/events/types';
 import { parseNonNegInt, parseOptionalBatchYear } from '@/lib/events/pricing';
 import { createAdminClient } from '@/lib/supabase-admin';
@@ -60,6 +62,7 @@ export async function POST(request: Request) {
     fee_batch_from: parseOptionalBatchYear(body.fee_batch_from),
     fee_batch_to: parseOptionalBatchYear(body.fee_batch_to),
     fee_batch_paise: parseNonNegInt(body.fee_batch_paise),
+    refund_email: normalizeRefundEmail(body.refund_email),
     is_primary: Boolean(body.is_primary),
     created_by: me.id,
     updated_at: new Date().toISOString(),
@@ -73,7 +76,7 @@ export async function POST(request: Request) {
   let { data, error } = await admin.from('event_catalog').insert(row).select(EVENT_SELECT).single();
   let warning: string | null = null;
   if (error && missingColumn(error)) {
-    const stripped = withoutFeeBatch(withoutDietPrices(row));
+    const stripped = withoutRefundEmail(withoutFeeBatch(withoutDietPrices(row)));
     const retry = await admin.from('event_catalog').insert(stripped).select(EVENT_SELECT).single();
     data = retry.data;
     error = retry.error;

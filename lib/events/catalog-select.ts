@@ -35,5 +35,11 @@ export function withoutFeeBatch<T extends Record<string, unknown>>(row: T): T {
   return next;
 }
 
+export function withoutRefundEmail<T extends Record<string, unknown>>(row: T): T {
+  const next = { ...row };
+  delete next.refund_email;
+  return next;
+}
+
 export const DIET_PRICE_WARNING =
   'The event was saved. Veg and non-veg prices are not stored yet — run the meal diet price migration in Supabase, then save the event again.';

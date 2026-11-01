@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
 import { isPublicEmail, normalizeEmail } from '@/lib/email';
 import RegistrationQr from '@/components/registration-qr';
+import RefundEmailCta from '@/components/refund-email-cta';
 import SearchableSelect from '@/components/searchable-select';
 import { COUNTRIES } from '@/lib/countries';
 import {
@@ -1436,6 +1437,15 @@ function RegistrationPageInner() {
                                 <p className="text-label-sm text-on-surface-variant">{costBreakdown.details}</p>
                             </div>
 
+                            <RefundEmailCta
+                                refundEmail={event?.refund_email}
+                                eventTitle={event?.title || 'Event'}
+                                fullName={formData.full_name}
+                                registrationCode={registrationCode}
+                                totalPaise={totalCost}
+                                paidPaise={amountPaid}
+                            />
+
                             {saveMessage && !error && (
                                 <div
                                     role="status"
@@ -1642,6 +1652,17 @@ function RegistrationPageInner() {
                                 </span>
                             </div>
                             <p className="text-label-sm text-on-surface-variant">{costBreakdown.details}</p>
+                        </div>
+
+                        <div className="mb-6">
+                            <RefundEmailCta
+                                refundEmail={event?.refund_email}
+                                eventTitle={event?.title || 'Event'}
+                                fullName={formData.full_name}
+                                registrationCode={registrationCode}
+                                totalPaise={totalCost}
+                                paidPaise={amountPaid}
+                            />
                         </div>
 
                         {error && (
