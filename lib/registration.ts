@@ -340,9 +340,30 @@ export function validateRegistrationCost(
 ): boolean {
   const pricing = maybeInput ? (pricingOrInput as EventPricing) : DEFAULT_JUBILEE_PRICING;
   const input = maybeInput ?? (pricingOrInput as CostCalculationInput);
+  // Stay aligned with the calculator — any positive total is enough.
+  if (getEventCostBreakdown(pricing, input).totalCost > 0) return true;
+
   const guests = guestsForPricing(pricing, input);
   const hasMeal = guests.some((g) => g.lunch || g.dinner);
   const hasParking = input.parkingNeeded !== 'none';
-  const hasBase = effectiveBaseTicketPaise(pricing, input.batch) > 0;
-  return hasMeal || hasParking || hasBase;
+  if (hasMeal || hasParking) return true;
+
+  const lunchOn =
+    Math.max(0, pricing.lunch_paise || 0) > 0 ||
+    (pricing.lunch_nonveg_paise != null && Number(pricing.lunch_nonveg_paise) > 0);
+  const dinnerOn =
+    Math.max(0, pricing.dinner_paise || 0) > 0 ||
+    (pricing.dinner_nonveg_paise != null && Number(pricing.dinner_nonveg_paise) > 0);
+  // Meals not sold: fee-only / free registration is valid (fee may be ₹0).
+  if (!lunchOn && !dinnerOn) return true;
+
+  // Batch in an explicit fee range (amount may be ₹0) — allow that free/reduced ticket.
+  const fromRaw = pricing.fee_batch_from;
+  const toRaw = pricing.fee_batch_to;
+  const rangeSet =
+    (fromRaw != null && Number.isFinite(Number(fromRaw))) ||
+    (toRaw != null && Number.isFinite(Number(toRaw)));
+  if (rangeSet && batchInFeeRange(fromRaw, toRaw, input.batch)) return true;
+
+  return false;
 }

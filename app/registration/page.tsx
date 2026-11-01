@@ -539,7 +539,9 @@ function RegistrationPageInner() {
                 batch: formData.batch ?? null,
             })
         ) {
-            setError('Select at least one meal or parking (or the event needs a registration fee)');
+            setError(
+                'Select lunch, dinner, or parking — or choose a batch that has a registration fee for this event'
+            );
             return { ok: false };
         }
         if (!formatLocation(formData.city, formData.country)) {

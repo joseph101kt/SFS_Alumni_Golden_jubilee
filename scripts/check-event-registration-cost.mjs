@@ -184,4 +184,39 @@ assert(
   'outside range still pays default when range fee is 0'
 );
 
+const freeRangeNoMeals = {
+  lunch_paise: 0,
+  dinner_paise: 0,
+  parking_2w_paise: 0,
+  parking_4w_paise: 0,
+  base_ticket_paise: 0,
+  fee_batch_from: 1986,
+  fee_batch_to: 2000,
+  fee_batch_paise: 0,
+};
+assert(
+  validateRegistrationCost(freeRangeNoMeals, {
+    numberOfGuests: 1,
+    lunch: false,
+    dinner: false,
+    parkingNeeded: 'none',
+    batch: 1990,
+  }) === true,
+  '₹0 meals + ₹0 range fee still allows registration'
+);
+assert(
+  validateRegistrationCost(
+    { ...freeRangeNoMeals, lunch_paise: 30000, fee_batch_paise: 5000 },
+    { numberOfGuests: 1, lunch: false, dinner: false, parkingNeeded: 'none', batch: 1990 }
+  ) === true,
+  'range fee alone (no meals selected) is valid'
+);
+assert(
+  validateRegistrationCost(
+    { ...jubilee, base_ticket_paise: 0 },
+    { numberOfGuests: 1, lunch: false, dinner: false, parkingNeeded: 'none', batch: 1990 }
+  ) === false,
+  'priced meals on offer still require a choice when fee is 0'
+);
+
 console.log('PASS event registration cost');

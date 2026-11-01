@@ -210,7 +210,8 @@ export async function registerAccountForEvent(
     return {
       status: 400,
       payload: {
-        error: 'Select at least one meal, parking, or ensure the event has a registration fee',
+        error:
+          'Select lunch, dinner, or parking — or ensure your batch has a registration fee for this event',
       },
     };
   }
