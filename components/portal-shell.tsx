@@ -26,16 +26,19 @@ export default function PortalShell({
   title,
   eyebrow = 'SFS ALUMNI COMMUNITY',
   intro,
+  sidebar = true,
 }: {
   children: ReactNode;
   title: string;
   eyebrow?: string;
   intro?: string;
+  sidebar?: boolean;
 }) {
   const path = usePathname() || '';
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
+    if (!sidebar) return;
     let active = true;
     (async () => {
       try {
@@ -50,7 +53,7 @@ export default function PortalShell({
     return () => {
       active = false;
     };
-  }, []);
+  }, [sidebar]);
 
   const links = isAdmin
     ? [...baseLinks, { href: '/admin', label: 'Admin' }]
@@ -60,43 +63,45 @@ export default function PortalShell({
     <main className="min-h-screen bg-surface pt-24 pb-16 print:pt-0 print:pb-0 print:bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 print:max-w-none print:px-0">
         <div className="flex gap-4 sm:gap-6 lg:gap-10 items-start">
-          <aside className="print:hidden w-[7.25rem] sm:w-44 lg:w-52 shrink-0 sticky top-28 self-start rounded-2xl border border-outline-variant bg-surface-paper p-2.5 sm:p-4">
-            <p className="text-xs sm:text-sm font-extrabold text-primary tracking-tight px-1.5 sm:px-1 leading-tight">
-              SFS Alumni
-            </p>
-            <p className="text-[9px] sm:text-[10px] uppercase tracking-[0.12em] text-jubilee-gold-deep font-bold px-1.5 sm:px-1 mb-2 sm:mb-3">
-              Golden Jubilee
-            </p>
-            <nav aria-label="Alumni portal" className="flex flex-col gap-0.5">
-              {links.map(({ href, label, emphasize }) => {
-                const active = linkActive(path, href);
-                if (emphasize && !active) {
+          {sidebar ? (
+            <aside className="print:hidden w-[7.25rem] sm:w-44 lg:w-52 shrink-0 sticky top-28 self-start rounded-2xl border border-outline-variant bg-surface-paper p-2.5 sm:p-4">
+              <p className="text-xs sm:text-sm font-extrabold text-primary tracking-tight px-1.5 sm:px-1 leading-tight">
+                SFS Alumni
+              </p>
+              <p className="text-[9px] sm:text-[10px] uppercase tracking-[0.12em] text-jubilee-gold-deep font-bold px-1.5 sm:px-1 mb-2 sm:mb-3">
+                Golden Jubilee
+              </p>
+              <nav aria-label="Alumni portal" className="flex flex-col gap-0.5">
+                {links.map(({ href, label, emphasize }) => {
+                  const active = linkActive(path, href);
+                  if (emphasize && !active) {
+                    return (
+                      <Link
+                        key={href}
+                        href={href}
+                        className="donate-flash-nav rounded-lg px-2 sm:px-3 py-2 sm:py-2.5 text-[12px] sm:text-sm leading-snug border border-transparent cursor-pointer"
+                      >
+                        {label}
+                      </Link>
+                    );
+                  }
                   return (
                     <Link
                       key={href}
                       href={href}
-                      className="donate-flash-nav rounded-lg px-2 sm:px-3 py-2 sm:py-2.5 text-[12px] sm:text-sm leading-snug border border-transparent cursor-pointer"
+                      className={`rounded-lg px-2 sm:px-3 py-2 sm:py-2.5 text-[12px] sm:text-sm font-medium leading-snug transition-colors cursor-pointer ${
+                        active
+                          ? 'bg-primary text-on-primary'
+                          : 'text-on-surface-variant hover:bg-surface-container hover:text-primary'
+                      }`}
                     >
                       {label}
                     </Link>
                   );
-                }
-                return (
-                  <Link
-                    key={href}
-                    href={href}
-                    className={`rounded-lg px-2 sm:px-3 py-2 sm:py-2.5 text-[12px] sm:text-sm font-medium leading-snug transition-colors cursor-pointer ${
-                      active
-                        ? 'bg-primary text-on-primary'
-                        : 'text-on-surface-variant hover:bg-surface-container hover:text-primary'
-                    }`}
-                  >
-                    {label}
-                  </Link>
-                );
-              })}
-            </nav>
-          </aside>
+                })}
+              </nav>
+            </aside>
+          ) : null}
 
           <div className="min-w-0 flex-1 print:w-full">
             <div className="print:hidden mb-5 lg:mb-6">

@@ -129,9 +129,11 @@ export type EventPricing = {
   parking_2w_paise: number;
   parking_4w_paise: number;
   base_ticket_paise: number;
-  /** Inclusive batch bounds for fee; both null = fee applies to all. */
+  /** Inclusive batch bounds for alternate fee; both null = everyone pays base_ticket. */
   fee_batch_from?: number | null;
   fee_batch_to?: number | null;
+  /** Fee for batches in range (paise); 0 allowed. Ignored when range unset. */
+  fee_batch_paise?: number | null;
 };
 
 function mealRatePaise(pricing: EventPricing, meal: 'lunch' | 'dinner', foodPreference?: string): number {
@@ -142,27 +144,47 @@ function mealRatePaise(pricing: EventPricing, meal: 'lunch' | 'dinner', foodPref
   return Math.max(0, Number(nonveg));
 }
 
-/** Registration fee per person after batch-range rules. Both bounds null = all batches. */
-export function effectiveBaseTicketPaise(
-  pricing: Pick<EventPricing, 'base_ticket_paise' | 'fee_batch_from' | 'fee_batch_to'>,
+function batchInFeeRange(
+  fromRaw: number | null | undefined,
+  toRaw: number | null | undefined,
   batch?: number | null
-): number {
-  const rate = Math.max(0, Number(pricing.base_ticket_paise) || 0);
-  if (rate <= 0) return 0;
-  const fromRaw = pricing.fee_batch_from;
-  const toRaw = pricing.fee_batch_to;
+): boolean {
   const fromSet = fromRaw != null && Number.isFinite(Number(fromRaw));
   const toSet = toRaw != null && Number.isFinite(Number(toRaw));
-  if (!fromSet && !toSet) return rate;
-  if (batch == null || !Number.isFinite(Number(batch))) return 0;
+  if (!fromSet && !toSet) return false;
+  if (batch == null || !Number.isFinite(Number(batch))) return false;
   const batchYear = Math.floor(Number(batch));
   if (fromSet && toSet) {
     const lo = Math.min(Number(fromRaw), Number(toRaw));
     const hi = Math.max(Number(fromRaw), Number(toRaw));
-    return batchYear >= lo && batchYear <= hi ? rate : 0;
+    return batchYear >= lo && batchYear <= hi;
   }
   const only = fromSet ? Number(fromRaw) : Number(toRaw);
-  return batchYear === only ? rate : 0;
+  return batchYear === only;
+}
+
+/**
+ * Registration fee per person.
+ * No range → base_ticket_paise (may be 0).
+ * With range → fee_batch_paise in range (may be 0), else base_ticket_paise.
+ */
+export function effectiveBaseTicketPaise(
+  pricing: Pick<
+    EventPricing,
+    'base_ticket_paise' | 'fee_batch_from' | 'fee_batch_to' | 'fee_batch_paise'
+  >,
+  batch?: number | null
+): number {
+  const defaultRate = Math.max(0, Number(pricing.base_ticket_paise) || 0);
+  const fromRaw = pricing.fee_batch_from;
+  const toRaw = pricing.fee_batch_to;
+  const fromSet = fromRaw != null && Number.isFinite(Number(fromRaw));
+  const toSet = toRaw != null && Number.isFinite(Number(toRaw));
+  if (!fromSet && !toSet) return defaultRate;
+  if (batchInFeeRange(fromRaw, toRaw, batch)) {
+    return Math.max(0, Number(pricing.fee_batch_paise) || 0);
+  }
+  return defaultRate;
 }
 
 /** @deprecated Prefer event catalog rates; kept for interim call sites. */

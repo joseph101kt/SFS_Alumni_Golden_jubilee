@@ -28,6 +28,7 @@ type FormState = {
   base_ticket_rupees: string;
   fee_batch_from: string;
   fee_batch_to: string;
+  fee_batch_rupees: string;
 };
 
 function toLocalInput(iso: string | null | undefined) {
@@ -66,6 +67,7 @@ function initialFrom(event?: EventCatalog | null): FormState {
     base_ticket_rupees: paiseToRupeesField(event?.base_ticket_paise ?? 0),
     fee_batch_from: event?.fee_batch_from != null ? String(event.fee_batch_from) : '',
     fee_batch_to: event?.fee_batch_to != null ? String(event.fee_batch_to) : '',
+    fee_batch_rupees: paiseToRupeesField(event?.fee_batch_paise ?? 0),
   };
 }
 
@@ -89,6 +91,7 @@ function pricingFromForm(f: FormState): EventPricing {
     base_ticket_paise: r(f.base_ticket_rupees),
     fee_batch_from: optionalYear(f.fee_batch_from),
     fee_batch_to: optionalYear(f.fee_batch_to),
+    fee_batch_paise: r(f.fee_batch_rupees),
   };
 }
 
@@ -261,7 +264,7 @@ export default function AdminEventForm({ event }: { event?: EventCatalog | null 
                 ['dinner_nonveg_rupees', 'Dinner · non-veg / person'],
                 ['parking_2w_rupees', '2-wheeler parking'],
                 ['parking_4w_rupees', '4-wheeler parking'],
-                ['base_ticket_rupees', 'Registration fee / person'],
+                ['base_ticket_rupees', 'Registration fee / person (default)'],
               ] as const
             ).map(([key, lab]) => (
               <div key={key}>
@@ -284,10 +287,11 @@ export default function AdminEventForm({ event }: { event?: EventCatalog | null 
               Fee batch range (optional)
             </p>
             <p className="text-body-sm text-on-surface-variant">
-              Leave both blank to charge every batch. Set from–to so only those batches pay the
-              registration fee (others ₹0 fee).
+              Leave batch from/to blank to use the default fee for every batch. Set a range to
+              charge those batches a different amount (₹0 or any nominal fee); everyone else keeps
+              the default.
             </p>
-            <div className="grid sm:grid-cols-2 gap-4">
+            <div className="grid sm:grid-cols-3 gap-4">
               <div>
                 <label className={label} htmlFor="fee_batch_from">
                   Batch from
@@ -318,6 +322,22 @@ export default function AdminEventForm({ event }: { event?: EventCatalog | null 
                   className={field}
                   value={form.fee_batch_to}
                   onChange={(e) => setField('fee_batch_to', e.target.value)}
+                />
+              </div>
+              <div>
+                <label className={label} htmlFor="fee_batch_rupees">
+                  Fee for these batches / person
+                </label>
+                <input
+                  id="fee_batch_rupees"
+                  type="number"
+                  min={0}
+                  step="1"
+                  inputMode="decimal"
+                  placeholder="0"
+                  className={field}
+                  value={form.fee_batch_rupees}
+                  onChange={(e) => setField('fee_batch_rupees', e.target.value)}
                 />
               </div>
             </div>

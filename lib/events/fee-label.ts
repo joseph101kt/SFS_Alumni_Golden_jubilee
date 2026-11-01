@@ -1,18 +1,29 @@
 import type { EventCatalog } from '@/lib/events/types';
 
-/** Short admin/public label for registration fee + optional batch range. */
+/** Short admin/public label for registration fee + optional batch exception. */
 export function registrationFeeLabel(
-  event: Pick<EventCatalog, 'base_ticket_paise' | 'fee_batch_from' | 'fee_batch_to'>
+  event: Pick<
+    EventCatalog,
+    'base_ticket_paise' | 'fee_batch_from' | 'fee_batch_to' | 'fee_batch_paise'
+  >
 ): string {
-  if (!(event.base_ticket_paise > 0)) return '';
-  const amount = `Registration fee ₹${(event.base_ticket_paise / 100).toFixed(0)} / person`;
+  const defaultFee = Math.max(0, event.base_ticket_paise || 0);
   const from = event.fee_batch_from;
   const to = event.fee_batch_to;
-  if (from == null && to == null) return amount;
-  if (from != null && to != null) {
-    const lo = Math.min(from, to);
-    const hi = Math.max(from, to);
-    return `${amount} (batches ${lo}–${hi})`;
+  const rangeFee = Math.max(0, Number(event.fee_batch_paise) || 0);
+  const hasRange = from != null || to != null;
+
+  if (!hasRange) {
+    if (defaultFee <= 0) return '';
+    return `Registration fee ₹${(defaultFee / 100).toFixed(0)} / person`;
   }
-  return `${amount} (batch ${from ?? to})`;
+
+  const rangeText =
+    from != null && to != null
+      ? `batches ${Math.min(from, to)}–${Math.max(from, to)}`
+      : `batch ${from ?? to}`;
+  const bits: string[] = [];
+  bits.push(`${rangeText} ₹${(rangeFee / 100).toFixed(0)}`);
+  bits.push(`others ₹${(defaultFee / 100).toFixed(0)}`);
+  return `Registration fee / person: ${bits.join(' · ')}`;
 }

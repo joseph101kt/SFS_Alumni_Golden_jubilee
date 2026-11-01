@@ -161,21 +161,27 @@ assert(
 
 const ranged = {
   ...jubilee,
-  base_ticket_paise: 10000,
+  base_ticket_paise: 5000,
   fee_batch_from: 1986,
   fee_batch_to: 2000,
+  fee_batch_paise: 10000,
 };
 assert(
   calculateEventRegistrationCost(ranged, { ...input, numberOfGuests: 1, batch: 1990 }) === 110000,
-  'batch in range pays registration fee'
+  'batch in range pays range fee ₹100'
 );
 assert(
-  calculateEventRegistrationCost(ranged, { ...input, numberOfGuests: 1, batch: 2010 }) === 100000,
-  'batch outside range pays no registration fee'
+  calculateEventRegistrationCost(ranged, { ...input, numberOfGuests: 1, batch: 2010 }) === 105000,
+  'batch outside range pays default fee ₹50'
+);
+const rangedZero = { ...ranged, fee_batch_paise: 0, base_ticket_paise: 10000 };
+assert(
+  calculateEventRegistrationCost(rangedZero, { ...input, numberOfGuests: 1, batch: 1990 }) === 100000,
+  'in-range fee may be ₹0'
 );
 assert(
-  getEventCostBreakdown(ranged, { ...input, numberOfGuests: 1, batch: 2010 }).baseCost === 0,
-  'outside range baseCost is 0'
+  calculateEventRegistrationCost(rangedZero, { ...input, numberOfGuests: 1, batch: 2010 }) === 110000,
+  'outside range still pays default when range fee is 0'
 );
 
 console.log('PASS event registration cost');

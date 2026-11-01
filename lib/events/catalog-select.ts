@@ -31,6 +31,7 @@ export function withoutFeeBatch<T extends Record<string, unknown>>(row: T): T {
   const next = { ...row };
   delete next.fee_batch_from;
   delete next.fee_batch_to;
+  delete next.fee_batch_paise;
   return next;
 }
 

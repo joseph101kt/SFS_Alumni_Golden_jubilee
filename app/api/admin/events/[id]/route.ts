@@ -51,6 +51,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
   if (body.base_ticket_paise !== undefined) patch.base_ticket_paise = parseNonNegInt(body.base_ticket_paise);
   if (body.fee_batch_from !== undefined) patch.fee_batch_from = parseOptionalBatchYear(body.fee_batch_from);
   if (body.fee_batch_to !== undefined) patch.fee_batch_to = parseOptionalBatchYear(body.fee_batch_to);
+  if (body.fee_batch_paise !== undefined) patch.fee_batch_paise = parseNonNegInt(body.fee_batch_paise);
   if (body.is_primary !== undefined) patch.is_primary = Boolean(body.is_primary);
 
   if (patch.title === '' || patch.summary === '') {
@@ -96,6 +97,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
     'base_ticket_paise',
     'fee_batch_from',
     'fee_batch_to',
+    'fee_batch_paise',
   ].some((key) => body[key] !== undefined);
   if (pricingTouched) await repriceEventRegistrations(id);
 

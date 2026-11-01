@@ -59,6 +59,7 @@ export async function POST(request: Request) {
     base_ticket_paise: parseNonNegInt(body.base_ticket_paise),
     fee_batch_from: parseOptionalBatchYear(body.fee_batch_from),
     fee_batch_to: parseOptionalBatchYear(body.fee_batch_to),
+    fee_batch_paise: parseNonNegInt(body.fee_batch_paise),
     is_primary: Boolean(body.is_primary),
     created_by: me.id,
     updated_at: new Date().toISOString(),

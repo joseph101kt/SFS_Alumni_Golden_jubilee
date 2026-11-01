@@ -8,7 +8,12 @@ import type { EventCatalog } from '@/lib/events/types';
 export function eventToPricing(event: Pick<
   EventCatalog,
   'lunch_paise' | 'dinner_paise' | 'parking_2w_paise' | 'parking_4w_paise' | 'base_ticket_paise'
-> & Partial<Pick<EventCatalog, 'lunch_nonveg_paise' | 'dinner_nonveg_paise' | 'fee_batch_from' | 'fee_batch_to'>>): EventPricing {
+> & Partial<
+  Pick<
+    EventCatalog,
+    'lunch_nonveg_paise' | 'dinner_nonveg_paise' | 'fee_batch_from' | 'fee_batch_to' | 'fee_batch_paise'
+  >
+>): EventPricing {
   return {
     lunch_paise: event.lunch_paise,
     dinner_paise: event.dinner_paise,
@@ -19,6 +24,7 @@ export function eventToPricing(event: Pick<
     base_ticket_paise: event.base_ticket_paise,
     fee_batch_from: event.fee_batch_from ?? null,
     fee_batch_to: event.fee_batch_to ?? null,
+    fee_batch_paise: event.fee_batch_paise ?? 0,
   };
 }
 
