@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import PwaInstall from '@/components/pwa-install';
 
 type DayOf = {
   headline: string;
@@ -79,26 +80,10 @@ export default function EventAppPage() {
       </p>
       <h1 className="text-display-sm text-primary mt-2">SFS Golden Jubilee</h1>
       <p className="text-body-sm text-on-surface-variant mt-2">
-        Install this page to your home screen for your venue pass, day-of info, and alerts.
+        Put this on your home screen for your venue pass, day-of info, and alerts.
       </p>
 
-      <section className="mt-6 rounded-2xl border border-primary/10 bg-surface-paper p-5 shadow-sm">
-        <h2 className="text-headline-sm text-primary">Install</h2>
-        <ol className="mt-3 space-y-2 text-body-sm text-on-surface list-decimal pl-5">
-          <li>
-            <strong>Android (Chrome):</strong> open this link → menu → <em>Install app</em> / Add to
-            Home screen.
-          </li>
-          <li>
-            <strong>iPhone (Safari):</strong> Share → <em>Add to Home Screen</em>. Use Safari, not
-            an in-app browser.
-          </li>
-        </ol>
-        <p className="mt-3 text-body-sm text-on-surface-variant">
-          After install, launch from the home-screen icon. For iPhone alerts, install first, then
-          enable notifications below.
-        </p>
-      </section>
+      <PwaInstall />
 
       <nav className="mt-6 grid gap-3">
         <Link
