@@ -15,6 +15,7 @@ export default function NavBar() {
     const pathname = usePathname();
     const onPortal =
         pathname === '/member' ||
+        pathname.startsWith('/member/') ||
         pathname === '/directory' ||
         pathname === '/events' ||
         pathname === '/stories' ||
@@ -61,7 +62,8 @@ export default function NavBar() {
             <div className="h-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 flex items-center justify-between gap-4">
                 <Link
                     className="flex items-center gap-2.5 sm:gap-3.5 group text-left min-w-0 flex-1 max-w-[min(100%,28rem)] lg:max-w-none"
-                    href={user ? (user.isAdmin ? '/admin' : '/member') : '/'}
+                    href="/"
+                    aria-label="Go to landing page"
                 >
                     <div className="relative flex-shrink-0">
                         <img
@@ -116,31 +118,40 @@ export default function NavBar() {
 
                     {user && (
                         <>
-                            {!onPortal && (
-                                <button
-                                    type="button"
-                                    onClick={() => setAssociationOpen(true)}
-                                    className="inline-flex items-center justify-center px-2.5 lg:px-3 py-2 rounded-lg text-label-md uppercase tracking-wider text-primary hover:bg-surface-container transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30 whitespace-nowrap"
-                                >
-                                    Association
-                                </button>
-                            )}
-                            {!onPortal && <div className="h-5 w-px bg-outline-variant" />}
-                            {!onPortal && !user.isAdmin && (
+                            {onPortal ? (
                                 <Link
-                                    href="/member"
+                                    href="/"
                                     className="inline-flex items-center justify-center px-2.5 lg:px-3 py-2 rounded-lg text-label-md uppercase tracking-wider text-primary hover:bg-surface-container transition-colors whitespace-nowrap"
                                 >
-                                    Alumni Portal
+                                    Landing page
                                 </Link>
-                            )}
-                            {!onPortal && user.isAdmin && (
-                                <Link
-                                    href="/admin"
-                                    className="inline-flex items-center justify-center px-2.5 lg:px-3 py-2 rounded-lg text-label-md uppercase tracking-wider bg-primary text-on-primary hover:bg-navy-subtle shadow-sm transition-all whitespace-nowrap"
-                                >
-                                    Admin
-                                </Link>
+                            ) : (
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={() => setAssociationOpen(true)}
+                                        className="inline-flex items-center justify-center px-2.5 lg:px-3 py-2 rounded-lg text-label-md uppercase tracking-wider text-primary hover:bg-surface-container transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30 whitespace-nowrap"
+                                    >
+                                        Association
+                                    </button>
+                                    <div className="h-5 w-px bg-outline-variant" />
+                                    {!user.isAdmin && (
+                                        <Link
+                                            href="/member"
+                                            className="inline-flex items-center justify-center px-2.5 lg:px-3 py-2 rounded-lg text-label-md uppercase tracking-wider text-primary hover:bg-surface-container transition-colors whitespace-nowrap"
+                                        >
+                                            Alumni Portal
+                                        </Link>
+                                    )}
+                                    {user.isAdmin && (
+                                        <Link
+                                            href="/admin"
+                                            className="inline-flex items-center justify-center px-2.5 lg:px-3 py-2 rounded-lg text-label-md uppercase tracking-wider bg-primary text-on-primary hover:bg-navy-subtle shadow-sm transition-all whitespace-nowrap"
+                                        >
+                                            Admin
+                                        </Link>
+                                    )}
+                                </>
                             )}
                             <span
                                 className="hidden xl:inline text-label-sm text-on-surface-variant px-2 max-w-[120px] truncate"
