@@ -9,7 +9,7 @@ const DEFAULT_CLASS =
 /** Back control: /member when signed in, otherwise guestHref (default /). */
 export default function BackHomeLink({
   className = DEFAULT_CLASS,
-  signedInLabel = 'Back to Home',
+  signedInLabel = 'Back to alumni portal',
   guestLabel = 'Back to Home',
   guestHref = '/',
   showIcon = true,

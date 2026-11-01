@@ -61,7 +61,7 @@ export default function NavBar() {
             <div className="h-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 flex items-center justify-between gap-4">
                 <Link
                     className="flex items-center gap-2.5 sm:gap-3.5 group text-left min-w-0 flex-1 max-w-[min(100%,28rem)] lg:max-w-none"
-                    href="/"
+                    href={user ? (user.isAdmin ? '/admin' : '/member') : '/'}
                 >
                     <div className="relative flex-shrink-0">
                         <img

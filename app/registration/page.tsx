@@ -1702,7 +1702,7 @@ function RegistrationPageInner() {
                                 signedIn={Boolean(user)}
                                 showIcon={false}
                                 guestHref={lastDue === 0 ? '/member' : '/'}
-                                signedInLabel={lastDue === 0 ? 'Go to alumni portal' : 'Back to Home'}
+                                signedInLabel="Go to alumni portal"
                                 guestLabel={lastDue === 0 ? 'Go to alumni portal' : 'Back to Home'}
                                 className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-lg border border-outline-variant text-primary text-label-md uppercase tracking-wider transition-all"
                             />
