@@ -7,10 +7,21 @@ type Props = {
   paused?: boolean;
 };
 
+type BarcodeDetectorLike = {
+  detect: (src: ImageBitmapSource) => Promise<{ rawValue: string }[]>;
+};
+
+declare global {
+  interface Window {
+    BarcodeDetector?: new (opts: { formats: string[] }) => BarcodeDetectorLike;
+  }
+}
+
 export default function GateQrScanner({ onCode, paused }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [error, setError] = useState('');
-  const [supported, setSupported] = useState(true);
+  const [live, setLive] = useState(false);
   const lastRef = useRef('');
 
   useEffect(() => {
@@ -18,42 +29,97 @@ export default function GateQrScanner({ onCode, paused }: Props) {
     let stream: MediaStream | null = null;
     let timer: number | undefined;
     let cancelled = false;
+    let jsQR: ((data: Uint8ClampedArray, w: number, h: number) => { data: string } | null) | null = null;
 
     async function start() {
-      const Detector = (window as unknown as { BarcodeDetector?: new (opts: { formats: string[] }) => { detect: (src: ImageBitmapSource) => Promise<{ rawValue: string }[]> } }).BarcodeDetector;
-      if (!Detector) {
-        setSupported(false);
-        setError('Camera QR scan needs a newer Chrome/Safari. Type the registration ID below.');
+      setError('');
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setLive(false);
+        setError('This browser has no camera API. Type the registration ID below.');
         return;
       }
+
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' } },
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
           audio: false,
         });
-        if (cancelled || !videoRef.current) return;
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-        const detector = new Detector({ formats: ['qr_code'] });
-        const tick = async () => {
-          if (cancelled || !videoRef.current) return;
-          try {
-            const codes = await detector.detect(videoRef.current);
-            const raw = codes[0]?.rawValue?.trim();
-            if (raw && raw !== lastRef.current) {
-              lastRef.current = raw;
-              onCode(raw);
-            }
-          } catch {
-            /* frame miss */
-          }
-          timer = window.setTimeout(tick, 350);
-        };
-        timer = window.setTimeout(tick, 400);
       } catch {
+        setLive(false);
         setError('Camera permission denied. Type the registration ID instead.');
-        setSupported(false);
+        return;
       }
+
+      if (cancelled || !videoRef.current) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+
+      const video = videoRef.current;
+      video.srcObject = stream;
+      await video.play();
+      setLive(true);
+
+      const Detector = window.BarcodeDetector;
+      let detector: BarcodeDetectorLike | null = null;
+      if (Detector) {
+        try {
+          detector = new Detector({ formats: ['qr_code'] });
+        } catch {
+          detector = null;
+        }
+      }
+
+      if (!detector) {
+        const mod = await import('jsqr');
+        jsQR = mod.default;
+      }
+
+      const tick = async () => {
+        if (cancelled || !videoRef.current) return;
+        const v = videoRef.current;
+        if (v.readyState < 2) {
+          timer = window.setTimeout(tick, 250);
+          return;
+        }
+
+        try {
+          let raw = '';
+          if (detector) {
+            const codes = await detector.detect(v);
+            raw = codes[0]?.rawValue?.trim() || '';
+          } else if (jsQR && canvasRef.current) {
+            const canvas = canvasRef.current;
+            const w = v.videoWidth || 640;
+            const h = v.videoHeight || 480;
+            if (w > 0 && h > 0) {
+              canvas.width = w;
+              canvas.height = h;
+              const ctx = canvas.getContext('2d', { willReadFrequently: true });
+              if (ctx) {
+                ctx.drawImage(v, 0, 0, w, h);
+                const image = ctx.getImageData(0, 0, w, h);
+                const hit = jsQR(image.data, image.width, image.height);
+                raw = hit?.data?.trim() || '';
+              }
+            }
+          }
+
+          if (raw && raw !== lastRef.current) {
+            lastRef.current = raw;
+            onCode(raw);
+          }
+        } catch {
+          /* frame miss */
+        }
+        timer = window.setTimeout(tick, detector ? 350 : 200);
+      };
+
+      timer = window.setTimeout(tick, 400);
     }
 
     void start();
@@ -66,12 +132,22 @@ export default function GateQrScanner({ onCode, paused }: Props) {
 
   return (
     <div className="rounded-2xl overflow-hidden border border-primary/15 bg-black/90">
-      {supported ? (
-        <video ref={videoRef} className="w-full aspect-[3/4] max-h-[420px] object-cover" muted playsInline />
-      ) : (
-        <div className="p-6 text-body-sm text-white/90">{error || 'Scanner unavailable'}</div>
+      <video
+        ref={videoRef}
+        className={`w-full aspect-[3/4] max-h-[420px] object-cover ${live ? '' : 'hidden'}`}
+        muted
+        playsInline
+        autoPlay
+      />
+      <canvas ref={canvasRef} className="hidden" aria-hidden />
+      {!live && (
+        <div className="p-6 text-body-sm text-white/90">
+          {error || 'Starting camera…'}
+        </div>
       )}
-      {error && supported ? <p className="p-3 text-body-sm text-jubilee-gold-light bg-primary">{error}</p> : null}
+      {error && live ? (
+        <p className="p-3 text-body-sm text-jubilee-gold-light bg-primary">{error}</p>
+      ) : null}
     </div>
   );
 }
