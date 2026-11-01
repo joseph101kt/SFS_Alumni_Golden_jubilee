@@ -9,6 +9,11 @@ type Overview = {
   publishedEvents: number;
   unpaidRegistrations: number;
   pendingMemories?: number;
+  pendingStories?: number;
+  pendingApprovals?: number;
+  amountPaidPaise?: number;
+  amountDuePaise?: number;
+  registrationCount?: number;
   catalogReady?: boolean;
 };
 
@@ -32,14 +37,47 @@ export default function AdminOverviewPage() {
     })();
   }, []);
 
+  const moneyPaid =
+    data?.amountPaidPaise != null
+      ? `₹${(data.amountPaidPaise / 100).toLocaleString('en-IN')}`
+      : '—';
+  const moneyDue =
+    data?.amountDuePaise != null
+      ? `₹${(data.amountDuePaise / 100).toLocaleString('en-IN')}`
+      : '—';
+
   const cards = [
     {
-      href: '/admin/membership',
-      label: 'Pending memberships',
-      value: data?.pendingMembers ?? '—',
-      hint: 'Approve or reject applicants',
-      icon: 'group',
+      href: '/admin/approvals',
+      label: 'Pending approvals',
+      value: data?.pendingApprovals ?? '—',
+      hint: 'Memberships, memories, and stories',
+      icon: 'fact_check',
       tone: 'gold' as const,
+    },
+    {
+      href: '/admin/event-ops',
+      label: 'Registrations',
+      value: data?.registrationCount ?? '—',
+      hint: 'Money, exceptions, check-ins',
+      icon: 'analytics',
+      tone: 'navy' as const,
+    },
+    {
+      href: '/admin/event-ops',
+      label: 'Money received',
+      value: moneyPaid,
+      hint: `Still due ${moneyDue}`,
+      icon: 'payments',
+      tone: 'amber' as const,
+    },
+    {
+      href: '/admin/registrations',
+      label: 'Unpaid / partial',
+      value: data?.unpaidRegistrations ?? '—',
+      hint: 'Review and mark paid',
+      icon: 'confirmation_number',
+      tone: 'amber' as const,
     },
     {
       href: '/admin/events',
@@ -50,19 +88,11 @@ export default function AdminOverviewPage() {
       tone: 'navy' as const,
     },
     {
-      href: '/admin/registrations',
-      label: 'Unpaid registrations',
-      value: data?.unpaidRegistrations ?? '—',
-      hint: 'Review and mark paid',
-      icon: 'confirmation_number',
-      tone: 'amber' as const,
-    },
-    {
-      href: '/admin/memories',
-      label: 'Pending memories',
-      value: data?.pendingMemories ?? '—',
-      hint: 'Approve or reject photo submissions',
-      icon: 'photo_library',
+      href: '/admin/membership',
+      label: 'Pending memberships',
+      value: data?.pendingMembers ?? '—',
+      hint: 'Approve or reject applicants',
+      icon: 'group',
       tone: 'gold' as const,
     },
   ];
@@ -89,7 +119,7 @@ export default function AdminOverviewPage() {
           {error}
         </p>
       )}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((c) => {
           const t = toneClass[c.tone];
           return (

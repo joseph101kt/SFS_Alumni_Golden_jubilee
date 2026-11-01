@@ -174,6 +174,13 @@ export default function MemberVenuePass() {
                 <div className="mt-4 flex justify-center">
                   <RegistrationQr code={summary.code} />
                 </div>
+                <p className="mt-4 text-body-sm text-on-surface-variant">
+                  Turn brightness up. Prefer the{' '}
+                  <Link href="/event-app" className="text-primary underline-offset-2 hover:underline">
+                    home-screen event app
+                  </Link>{' '}
+                  so the pass is one tap away.
+                </p>
               </div>
             ) : summary.paid ? (
               <p className="mt-5 text-body-sm text-on-surface-variant">

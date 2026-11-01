@@ -42,7 +42,14 @@ export default function CheckInPage() {
 
   return (
     <AdminShell title="Check-in">
-      <form onSubmit={lookup} className="flex flex-col sm:flex-row gap-3 max-w-xl">
+      <p className="mb-4 text-body-sm text-on-surface-variant max-w-2xl">
+        For phone camera scanning with the gate PIN, use{' '}
+        <a href="/gate" className="text-primary underline-offset-2 hover:underline">
+          /gate
+        </a>
+        . This page stays available for typed lookups.
+      </p>
+      <form onSubmit={lookup} className="flex flex-col sm:flex-row gap-3 max-w-2xl">
         <label className="flex-1">
           <span className="block text-label-sm uppercase tracking-wider text-primary mb-2">
             Registration ID
@@ -55,7 +62,7 @@ export default function CheckInPage() {
             autoComplete="off"
             spellCheck={false}
             required
-            className="w-full px-3 py-3 rounded-lg border border-primary/15 text-body-md tracking-[0.12em] bg-surface-ivory focus:outline-none focus:border-jubilee-gold-deep"
+            className="w-full px-4 py-3.5 rounded-lg border border-primary/15 text-body-md tracking-[0.12em] bg-surface-ivory focus:outline-none focus:border-jubilee-gold-deep"
           />
         </label>
         <button
@@ -68,7 +75,7 @@ export default function CheckInPage() {
       </form>
 
       {message && (
-        <p role="alert" className="mt-5 rounded-xl border border-error/30 bg-error-container p-4 text-body-sm text-error max-w-xl">
+        <p role="alert" className="mt-5 rounded-xl border border-error/30 bg-error-container p-4 text-body-sm text-error max-w-2xl">
           {message}
         </p>
       )}
@@ -76,7 +83,7 @@ export default function CheckInPage() {
       {hit && (
         <div
           role="status"
-          className="mt-5 max-w-xl rounded-2xl border border-primary/10 bg-surface-paper p-6 shadow-sm"
+          className="mt-5 max-w-2xl rounded-2xl border border-primary/10 bg-surface-paper p-6 shadow-sm"
         >
           <p
             className={`inline-flex px-2.5 py-1 rounded-md text-label-sm uppercase tracking-wider ${

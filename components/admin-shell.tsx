@@ -6,7 +6,10 @@ import type { ReactNode } from 'react';
 
 const LINKS: { href: string; label: string; icon: string; match?: 'exact' | 'prefix' }[] = [
   { href: '/admin', label: 'Overview', icon: 'dashboard', match: 'exact' },
+  { href: '/admin/event-ops', label: 'Event ops', icon: 'analytics', match: 'prefix' },
+  { href: '/admin/approvals', label: 'Approvals', icon: 'fact_check', match: 'prefix' },
   { href: '/admin/check-in', label: 'Check-in', icon: 'qr_code_scanner', match: 'prefix' },
+  { href: '/admin/broadcast', label: 'Broadcast', icon: 'campaign', match: 'prefix' },
   { href: '/admin/membership', label: 'Membership', icon: 'group', match: 'prefix' },
   { href: '/admin/events', label: 'Events', icon: 'event', match: 'prefix' },
   { href: '/admin/registrations', label: 'Registrations', icon: 'confirmation_number', match: 'prefix' },

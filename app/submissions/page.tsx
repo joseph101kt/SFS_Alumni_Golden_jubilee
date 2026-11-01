@@ -37,6 +37,7 @@ export default function SubmissionsPage() {
   const [storyOk, setStoryOk] = useState('');
   const [memoryBusy, setMemoryBusy] = useState(false);
   const [storyBusy, setStoryBusy] = useState(false);
+  const [memoryFileName, setMemoryFileName] = useState('');
 
   async function loadAll() {
     const [memRes, storyRes] = await Promise.all([
@@ -104,6 +105,7 @@ export default function SubmissionsPage() {
       }
       setMemoryOk('Photo submitted for committee review.');
       form.reset();
+      setMemoryFileName('');
       if (batchDefault) {
         const batchSelect = form.elements.namedItem('batch_year') as HTMLSelectElement | null;
         if (batchSelect) batchSelect.value = batchDefault;
@@ -158,26 +160,41 @@ export default function SubmissionsPage() {
           <h2 className="text-headline-sm text-primary mb-3">Share a memory</h2>
           <form
             onSubmit={onShareMemory}
-            className="rounded-2xl border border-outline-variant bg-surface-paper p-5 sm:p-6 space-y-4 max-w-xl"
+            className="rounded-2xl border border-outline-variant bg-surface-paper p-5 sm:p-6 space-y-4 max-w-2xl"
           >
-            <label className="block">
-              <span className="text-label-sm text-primary">Photo</span>
+            <div>
+              <span className="text-label-sm text-primary block mb-1">Photo</span>
               <input
+                id="memory-photo"
                 name="image"
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
                 required
-                className="mt-1 block w-full text-body-sm"
+                disabled={memoryBusy}
+                className="sr-only"
+                onChange={(e) => setMemoryFileName(e.target.files?.[0]?.name || '')}
               />
-              <span className="text-label-sm text-on-surface-variant">JPEG, PNG or WebP · max 4 MB</span>
-            </label>
+              <div className="flex flex-wrap items-center gap-2">
+                <label
+                  htmlFor="memory-photo"
+                  className={`inline-flex items-center justify-center rounded-lg bg-primary text-on-primary px-4 py-2.5 text-label-sm font-bold uppercase tracking-wider cursor-pointer hover:bg-primary-container ${
+                    memoryBusy ? 'opacity-50 pointer-events-none' : ''
+                  }`}
+                >
+                  {memoryFileName ? 'Replace photo' : 'Upload photo'}
+                </label>
+                <span className="text-body-sm text-on-surface-variant truncate max-w-[14rem]">
+                  {memoryFileName || 'JPEG, PNG or WebP · max 4 MB'}
+                </span>
+              </div>
+            </div>
             <label className="block">
               <span className="text-label-sm text-primary">Title</span>
               <input
                 name="title"
                 required
                 maxLength={120}
-                className="mt-1 w-full rounded-lg border border-outline-variant px-3 py-2 text-body-sm bg-surface"
+                className="mt-1 w-full rounded-lg border border-outline-variant px-4 py-3.5 text-body-sm bg-surface"
               />
             </label>
             <label className="block">
@@ -186,7 +203,7 @@ export default function SubmissionsPage() {
                 name="description"
                 rows={3}
                 maxLength={500}
-                className="mt-1 w-full rounded-lg border border-outline-variant px-3 py-2 text-body-sm bg-surface"
+                className="mt-1 w-full rounded-lg border border-outline-variant px-4 py-3.5 text-body-sm bg-surface"
               />
             </label>
             <label className="block">
@@ -195,7 +212,7 @@ export default function SubmissionsPage() {
                 name="batch_year"
                 defaultValue={batchDefault || 'general'}
                 key={batchDefault || 'general'}
-                className="mt-1 w-full rounded-lg border border-outline-variant px-3 py-2 text-body-sm bg-surface"
+                className="mt-1 w-full rounded-lg border border-outline-variant px-4 py-3.5 text-body-sm bg-surface"
               >
                 <option value="general">General / all SFS</option>
                 {batchDefault && <option value={batchDefault}>{batchDefault} (your batch)</option>}
@@ -231,7 +248,7 @@ export default function SubmissionsPage() {
           <h2 className="text-headline-sm text-primary mb-3">Share a story</h2>
           <form
             onSubmit={onShareStory}
-            className="rounded-2xl border border-outline-variant bg-surface-paper p-5 sm:p-6 space-y-4 max-w-xl"
+            className="rounded-2xl border border-outline-variant bg-surface-paper p-5 sm:p-6 space-y-4 max-w-2xl"
           >
             <label className="block">
               <span className="text-label-sm text-primary">Title</span>
@@ -239,7 +256,7 @@ export default function SubmissionsPage() {
                 name="title"
                 required
                 maxLength={120}
-                className="mt-1 w-full rounded-lg border border-outline-variant px-3 py-2 text-body-sm bg-surface"
+                className="mt-1 w-full rounded-lg border border-outline-variant px-4 py-3.5 text-body-sm bg-surface"
               />
             </label>
             <label className="block">
@@ -250,7 +267,7 @@ export default function SubmissionsPage() {
                 rows={8}
                 maxLength={5000}
                 placeholder="A memory, a teacher, a moment that still stays with you…"
-                className="mt-1 w-full rounded-lg border border-outline-variant px-3 py-2 text-body-sm bg-surface"
+                className="mt-1 w-full rounded-lg border border-outline-variant px-4 py-3.5 text-body-sm bg-surface"
               />
             </label>
             {storyError && <p className="text-body-sm text-error">{storyError}</p>}
