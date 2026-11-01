@@ -42,7 +42,8 @@ function whenLabel(starts: string, ends?: string | null): string {
   return end && end !== start ? `${start} – ${end}` : start;
 }
 
-export default function MemberVenuePass() {
+export default function MemberVenuePass({ mode = 'full' }: { mode?: 'full' | 'pass-only' }) {
+  const passOnly = mode === 'pass-only';
   const [passes, setPasses] = useState<Loaded[]>([]);
   const [phase, setPhase] = useState<'loading' | 'ready' | 'empty' | 'hidden'>('loading');
 
@@ -104,16 +105,26 @@ export default function MemberVenuePass() {
     };
   }, []);
 
-  if (phase === 'hidden') return null;
+  if (phase === 'hidden') {
+    if (!passOnly) return null;
+    return (
+      <section className="rounded-2xl border border-outline-variant bg-white p-6">
+        <h2 className="text-headline-sm text-primary">Pass unavailable</h2>
+        <p className="text-body-sm text-on-surface-variant mt-2">
+          Sign in with the account that registered for the event to show your pass.
+        </p>
+      </section>
+    );
+  }
   if (phase === 'loading') {
-    return <p className="mb-6 text-body-sm text-on-surface-variant">Loading your registrations…</p>;
+    return <p className="mb-6 text-body-sm text-on-surface-variant">Loading your entry pass…</p>;
   }
   if (phase === 'empty') {
     return (
       <section id="venue-pass" className="mb-6 rounded-2xl border border-outline-variant bg-white p-6 shadow-sm">
         <h2 className="text-headline-sm text-primary">No registration yet</h2>
         <p className="text-body-sm text-on-surface-variant mt-2">
-          Pick an open event and register. Your pass, payment, and venue code will show up here.
+          Register for an event first. Your entry pass will show up here.
         </p>
         <Link href="/registration" className="inline-flex mt-5 px-5 py-3 rounded-lg bg-primary text-white text-label-md">
           Register for an event
@@ -123,7 +134,7 @@ export default function MemberVenuePass() {
   }
 
   return (
-    <div id="venue-pass" className="space-y-4 mb-6 scroll-mt-28">
+    <div id="venue-pass" className={`space-y-4 scroll-mt-28 ${passOnly ? '' : 'mb-6'}`}>
       {passes.map((pass) => {
         const summary = venuePassSummary({
           ...pass.registration,
@@ -136,10 +147,14 @@ export default function MemberVenuePass() {
           ['Parking', summary.parking],
         ];
         return (
-          <section key={pass.eventId} aria-label={`${pass.eventTitle} registration`} className="rounded-2xl border border-outline-variant bg-white p-6 shadow-sm">
+          <section
+            key={pass.eventId}
+            aria-label={`${pass.eventTitle} entry pass`}
+            className="rounded-2xl border border-outline-variant bg-white p-6 shadow-sm"
+          >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-label-sm uppercase tracking-[0.16em] text-jubilee-gold-deep font-bold">
-                {summary.paid ? 'Venue pass' : 'Registration'}
+                {summary.paid ? 'Entry pass' : 'Registration'}
               </p>
               <p
                 className={`rounded-full px-3 py-1 text-label-sm font-bold ${
@@ -156,14 +171,16 @@ export default function MemberVenuePass() {
             </p>
             {pass.name ? <p className="text-body-md text-primary mt-3">{pass.name}</p> : null}
 
-            <dl className="mt-5 grid grid-cols-2 gap-3">
-              {facts.map(([label, value]) => (
-                <div key={label} className="rounded-xl bg-surface-container px-4 py-3">
-                  <dt className="text-label-sm uppercase tracking-wider text-on-surface-variant">{label}</dt>
-                  <dd className="text-body-md text-primary mt-1">{value}</dd>
-                </div>
-              ))}
-            </dl>
+            {!passOnly && (
+              <dl className="mt-5 grid grid-cols-2 gap-3">
+                {facts.map(([label, value]) => (
+                  <div key={label} className="rounded-xl bg-surface-container px-4 py-3">
+                    <dt className="text-label-sm uppercase tracking-wider text-on-surface-variant">{label}</dt>
+                    <dd className="text-body-md text-primary mt-1">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
 
             {summary.code ? (
               <div className="mt-5 rounded-xl border border-outline-variant px-4 py-5 text-center">
@@ -174,26 +191,45 @@ export default function MemberVenuePass() {
                 <div className="mt-4 flex justify-center">
                   <RegistrationQr code={summary.code} />
                 </div>
-                <p className="mt-4 text-body-sm text-on-surface-variant">
-                  Turn brightness up. Prefer the{' '}
-                  <Link href="/event-app" className="text-primary underline-offset-2 hover:underline">
-                    home-screen event app
-                  </Link>{' '}
-                  so the pass is one tap away.
-                </p>
+                {passOnly ? (
+                  <p className="mt-4 text-body-sm text-on-surface-variant">Turn brightness up for scanning.</p>
+                ) : (
+                  <p className="mt-4 text-body-sm text-on-surface-variant">
+                    Turn brightness up. Prefer the{' '}
+                    <Link href="/event-app" className="text-primary underline-offset-2 hover:underline">
+                      home-screen event app
+                    </Link>{' '}
+                    so the pass is one tap away.
+                  </p>
+                )}
               </div>
             ) : summary.paid ? (
               <p className="mt-5 text-body-sm text-on-surface-variant">
                 Your registration ID will appear here once it is issued.
               </p>
-            ) : null}
+            ) : (
+              <p className="mt-5 text-body-sm text-error">
+                Complete payment to unlock your entry pass QR.
+              </p>
+            )}
 
-            <Link
-              href={registrationPath(pass.eventId)}
-              className="inline-flex mt-5 min-h-11 items-center px-5 py-3 rounded-lg bg-primary text-white text-label-md"
-            >
-              {summary.paid ? 'Update registration' : 'Complete payment'}
-            </Link>
+            {!passOnly && (
+              <Link
+                href={registrationPath(pass.eventId)}
+                className="inline-flex mt-5 min-h-11 items-center px-5 py-3 rounded-lg bg-primary text-white text-label-md"
+              >
+                {summary.paid ? 'Update registration' : 'Complete payment'}
+              </Link>
+            )}
+
+            {passOnly && !summary.paid && (
+              <Link
+                href={registrationPath(pass.eventId)}
+                className="inline-flex mt-5 min-h-11 items-center px-5 py-3 rounded-lg bg-primary text-white text-label-md"
+              >
+                Complete payment
+              </Link>
+            )}
           </section>
         );
       })}
