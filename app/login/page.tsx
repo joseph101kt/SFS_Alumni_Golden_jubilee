@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { safeRegistrationNext } from '@/lib/events/choose-event';
 import PasswordInput from '@/components/password-input';
+import BackHomeLink from '@/components/back-home-link';
 
 export default function LoginPage() {
     return (
@@ -165,15 +166,8 @@ function LoginForm() {
                     </Link>
                 </div>
 
-                {/* Back to Home */}
                 <div className="text-center mt-8">
-                    <Link
-                        href="/"
-                        className="inline-flex items-center gap-1.5 text-label-sm text-on-surface-variant hover:text-primary transition-colors"
-                    >
-                        <span className="material-symbols-outlined text-[16px]">arrow_back</span>
-                        Back to Home
-                    </Link>
+                    <BackHomeLink />
                 </div>
             </div>
         </div>

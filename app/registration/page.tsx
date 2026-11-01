@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase';
 import { isPublicEmail, normalizeEmail } from '@/lib/email';
 import RegistrationQr from '@/components/registration-qr';
 import RefundEmailCta from '@/components/refund-email-cta';
+import BackHomeLink from '@/components/back-home-link';
 import SearchableSelect from '@/components/searchable-select';
 import { COUNTRIES } from '@/lib/countries';
 import {
@@ -886,15 +887,7 @@ function RegistrationPageInner() {
                         </p>
 
                         <div className="mt-8">
-                            <Link
-                                href="/"
-                                className="inline-flex items-center gap-1.5 text-label-sm text-on-surface-variant hover:text-primary transition-colors"
-                            >
-                                <span className="material-symbols-outlined text-[16px]">
-                                    arrow_back
-                                </span>
-                                Back to Home
-                            </Link>
+                            <BackHomeLink signedIn={false} />
                         </div>
                     </div>
                 </div>
@@ -1504,15 +1497,7 @@ function RegistrationPageInner() {
                         </form>
 
                         <div className="text-center mt-6">
-                            <Link
-                                href="/"
-                                className="inline-flex items-center gap-1.5 text-label-sm text-on-surface-variant hover:text-primary transition-colors"
-                            >
-                                <span className="material-symbols-outlined text-[16px]">
-                                    arrow_back
-                                </span>
-                                Back to Home
-                            </Link>
+                            <BackHomeLink signedIn />
                         </div>
                     </div>
                 </div>
@@ -1713,12 +1698,14 @@ function RegistrationPageInner() {
                             >
                                 Edit meals or parking
                             </button>
-                            <Link
-                                href={lastDue === 0 ? '/member' : '/'}
+                            <BackHomeLink
+                                signedIn={Boolean(user)}
+                                showIcon={false}
+                                guestHref={lastDue === 0 ? '/member' : '/'}
+                                signedInLabel={lastDue === 0 ? 'Go to alumni portal' : 'Back to Home'}
+                                guestLabel={lastDue === 0 ? 'Go to alumni portal' : 'Back to Home'}
                                 className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-lg border border-outline-variant text-primary text-label-md uppercase tracking-wider transition-all"
-                            >
-                                {lastDue === 0 ? 'Go to alumni portal' : 'Back to Home'}
-                            </Link>
+                            />
                         </div>
                     </div>
                 </div>
