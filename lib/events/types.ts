@@ -33,3 +33,6 @@ export const EVENT_SELECT =
 /** Pre–fee-batch-range columns (migration not applied yet). */
 export const EVENT_SELECT_LEGACY =
   'id,title,summary,description,starts_at,ends_at,venue,published,lunch_paise,dinner_paise,parking_2w_paise,parking_4w_paise,base_ticket_paise,is_primary,created_at,updated_at';
+
+/** Legacy pricing columns plus refund email when fee-batch cols are absent. */
+export const EVENT_SELECT_LEGACY_REFUND = `${EVENT_SELECT_LEGACY},refund_email`;

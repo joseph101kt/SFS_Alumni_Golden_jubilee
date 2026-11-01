@@ -1,23 +1,35 @@
 import { missingColumn } from '@/lib/events/registration-code';
-import { EVENT_SELECT, EVENT_SELECT_LEGACY } from '@/lib/events/types';
+import {
+  EVENT_SELECT,
+  EVENT_SELECT_LEGACY,
+  EVENT_SELECT_LEGACY_REFUND,
+} from '@/lib/events/types';
 
 export const EVENT_SELECT_DIET = `${EVENT_SELECT},lunch_nonveg_paise,dinner_nonveg_paise`;
 export const EVENT_SELECT_DIET_LEGACY = `${EVENT_SELECT_LEGACY},lunch_nonveg_paise,dinner_nonveg_paise`;
+export const EVENT_SELECT_DIET_LEGACY_REFUND = `${EVENT_SELECT_LEGACY_REFUND},lunch_nonveg_paise,dinner_nonveg_paise`;
 
 type CatalogError = { code?: string; message?: string } | null;
 type CatalogResult<T> = { data: T; error: CatalogError };
 
-/** Reads the catalog with diet + fee-batch columns, falling back when not migrated yet. */
+/** Reads the catalog with diet + fee-batch + refund columns, falling back when not migrated yet. */
 export async function selectCatalog<T>(
   run: (columns: string) => PromiseLike<CatalogResult<T>>
 ): Promise<CatalogResult<T>> {
-  const full = await run(EVENT_SELECT_DIET);
-  if (!full.error || !missingColumn(full.error)) return full;
-  const mid = await run(EVENT_SELECT_DIET_LEGACY);
-  if (!mid.error || !missingColumn(mid.error)) return mid;
-  const bare = await run(EVENT_SELECT);
-  if (!bare.error || !missingColumn(bare.error)) return bare;
-  return run(EVENT_SELECT_LEGACY);
+  const attempts = [
+    EVENT_SELECT_DIET,
+    EVENT_SELECT,
+    EVENT_SELECT_DIET_LEGACY_REFUND,
+    EVENT_SELECT_LEGACY_REFUND,
+    EVENT_SELECT_DIET_LEGACY,
+    EVENT_SELECT_LEGACY,
+  ];
+  let last: CatalogResult<T> = { data: null as T, error: { message: 'no attempt' } };
+  for (const columns of attempts) {
+    last = await run(columns);
+    if (!last.error || !missingColumn(last.error)) return last;
+  }
+  return last;
 }
 
 export function withoutDietPrices<T extends Record<string, unknown>>(row: T): T {

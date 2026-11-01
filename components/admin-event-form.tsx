@@ -251,8 +251,9 @@ export default function AdminEventForm({ event }: { event?: EventCatalog | null 
               onChange={(e) => setField('refund_email', e.target.value)}
             />
             <p className="text-label-sm text-on-surface-variant mt-1.5">
-              Shown on registration when someone has paid, so they can email a refund request.
-              Leave blank to hide.
+              Required for the clickable refund link on registration. Overpayments still show a
+              credit notice even if this is blank — set an email so alumni can mailto the
+              committee.
             </p>
           </div>
           <label className="flex items-center gap-2 text-body-sm text-primary cursor-pointer">

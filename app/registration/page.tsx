@@ -1435,16 +1435,15 @@ function RegistrationPageInner() {
                                     </span>
                                 </div>
                                 <p className="text-label-sm text-on-surface-variant">{costBreakdown.details}</p>
+                                <RefundEmailCta
+                                    refundEmail={event?.refund_email}
+                                    eventTitle={event?.title || 'Event'}
+                                    fullName={formData.full_name}
+                                    registrationCode={registrationCode}
+                                    totalPaise={totalCost}
+                                    paidPaise={amountPaid}
+                                />
                             </div>
-
-                            <RefundEmailCta
-                                refundEmail={event?.refund_email}
-                                eventTitle={event?.title || 'Event'}
-                                fullName={formData.full_name}
-                                registrationCode={registrationCode}
-                                totalPaise={totalCost}
-                                paidPaise={amountPaid}
-                            />
 
                             {saveMessage && !error && (
                                 <div
@@ -1652,9 +1651,6 @@ function RegistrationPageInner() {
                                 </span>
                             </div>
                             <p className="text-label-sm text-on-surface-variant">{costBreakdown.details}</p>
-                        </div>
-
-                        <div className="mb-6">
                             <RefundEmailCta
                                 refundEmail={event?.refund_email}
                                 eventTitle={event?.title || 'Event'}
