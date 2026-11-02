@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
 import { isPublicEmail, normalizeEmail } from '@/lib/email';
 import RegistrationQr from '@/components/registration-qr';
+import EventPushOptIn from '@/components/event-push-opt-in';
 import RefundEmailCta from '@/components/refund-email-cta';
 import BackHomeLink from '@/components/back-home-link';
 import SearchableSelect from '@/components/searchable-select';
@@ -1539,6 +1540,10 @@ function RegistrationPageInner() {
                                 </p>
                             </div>
                         )}
+
+                        <div className="mb-6 text-left">
+                            <EventPushOptIn auto autoRequest />
+                        </div>
 
                         <p className="text-body-md text-on-surface-variant mb-6">
                             {lastDue === 0 && paymentStatus === 'paid'

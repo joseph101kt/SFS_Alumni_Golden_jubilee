@@ -65,7 +65,7 @@ export default function GateScanPage() {
     (async () => {
       const res = await fetch('/api/gate/me', { cache: 'no-store' });
       const payload = await res.json().catch(() => ({}));
-      if (!payload.ok) {
+      if (!payload.gate) {
         router.replace('/gate');
         return;
       }

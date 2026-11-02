@@ -1,0 +1,33 @@
+#!/usr/bin/env node
+/**
+ * ponytail: ceiling = static string checks that alumni sidebar exposes
+ * Get the app → QR + iPhone/Android install copy. Upgrade: Playwright open dialog.
+ */
+import { readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const shell = readFileSync(join(root, 'components/portal-shell.tsx'), 'utf8');
+const install = readFileSync(join(root, 'components/pwa-install.tsx'), 'utf8');
+
+function assert(cond, msg) {
+  if (!cond) throw new Error(msg);
+}
+
+assert(shell.includes('Get the app'), 'portal shell has Get the app control');
+assert(
+  shell.includes('pwa-install') || shell.includes('PwaInstall'),
+  'portal shell wires PwaInstall'
+);
+assert(shell.includes('role="dialog"') || shell.includes("role='dialog'"), 'opens a dialog');
+assert(install.includes('/event-app'), 'QR/link targets event-app');
+assert(install.includes('iPhone'), 'iPhone install steps');
+assert(install.includes('Android'), 'Android install steps');
+assert(
+  install.includes('shareMode') || install.includes('alwaysShowQr'),
+  'install guide can force QR for desktop share'
+);
+assert(install.includes('startPath'), 'PwaInstall accepts startPath');
+
+console.log('PASS get-app sidebar');

@@ -46,7 +46,11 @@ function LoginForm() {
             const me = meRes.ok ? await meRes.json() : null;
             const next = safeRegistrationNext(searchParams.get('next'));
             if (me?.role === 'admin') {
-                router.push('/admin');
+                router.push(
+                    next && (next === '/admin-app' || next.startsWith('/admin-app/') || next.startsWith('/admin-app?'))
+                        ? next
+                        : '/admin'
+                );
             } else if (next) {
                 router.push(next);
             } else if (me?.jubilee_reg_status === 'paid') {

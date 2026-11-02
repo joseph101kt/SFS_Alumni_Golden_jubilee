@@ -68,7 +68,7 @@ export default function EventDayPage() {
         Tip: turn screen brightness up when showing your QR at the gate.
       </p>
       <Link
-        href="/member#venue-pass"
+        href="/event-app/pass"
         className="inline-flex mt-4 rounded-lg bg-primary text-on-primary px-5 py-3 text-label-md"
       >
         Show venue pass

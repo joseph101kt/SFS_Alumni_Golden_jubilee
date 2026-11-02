@@ -15,7 +15,8 @@ export default function GateLoginPage() {
     (async () => {
       const res = await fetch('/api/gate/me', { cache: 'no-store' });
       const payload = await res.json().catch(() => ({}));
-      if (payload.ok) {
+      // Only a gate PIN session skips this screen — not alumni/admin login.
+      if (payload.gate) {
         router.replace('/gate/scan');
         return;
       }

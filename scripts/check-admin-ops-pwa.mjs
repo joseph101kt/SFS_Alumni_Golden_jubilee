@@ -1,0 +1,69 @@
+#!/usr/bin/env node
+/**
+ * ponytail: ceiling = static wiring for /admin-app ops PWA.
+ * Upgrade: Playwright install + login next on a device.
+ */
+import { readFileSync, existsSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+function read(rel) {
+  return readFileSync(join(root, rel), 'utf8');
+}
+
+function assert(cond, msg) {
+  if (!cond) throw new Error(msg);
+}
+
+const manifest = read('public/admin-app.webmanifest');
+assert(manifest.includes('"id": "/admin-app"'), 'manifest id');
+assert(manifest.includes('"start_url": "/admin-app"'), 'manifest start_url');
+assert(manifest.includes('SFS Ops'), 'manifest short name');
+
+const nav = read('components/nav-host.tsx');
+assert(nav.includes('/admin-app'), 'nav hides admin-app chrome');
+
+const choose = read('lib/events/choose-event.ts');
+assert(choose.includes('/admin-app'), 'safeRegistrationNext allows admin-app');
+
+const login = read('app/login/page.tsx');
+assert(login.includes('/admin-app'), 'login honors admin-app next');
+
+const home = read('app/admin-app/page.tsx');
+assert(home.includes('/admin-app/event-ops'), 'home links event-ops');
+assert(home.includes('/admin-app/approvals'), 'home links approvals');
+assert(home.includes('/admin-app/broadcast'), 'home links broadcast');
+assert(
+  home.includes('startPath="/admin-app"') || home.includes("startPath='/admin-app'"),
+  'home install targets admin-app'
+);
+
+const install = read('components/pwa-install.tsx');
+assert(install.includes('startPath'), 'PwaInstall has startPath');
+
+for (const panel of [
+  'components/admin-tools/event-ops-panel.tsx',
+  'components/admin-tools/approvals-panel.tsx',
+  'components/admin-tools/broadcast-panel.tsx',
+]) {
+  assert(existsSync(join(root, panel)), `missing ${panel}`);
+}
+
+for (const page of [
+  'app/admin/event-ops/page.tsx',
+  'app/admin/approvals/page.tsx',
+  'app/admin/broadcast/page.tsx',
+  'app/admin-app/event-ops/page.tsx',
+  'app/admin-app/approvals/page.tsx',
+  'app/admin-app/broadcast/page.tsx',
+]) {
+  const src = read(page);
+  assert(
+    src.includes('admin-tools/') || src.includes("admin-tools/"),
+    `${page} imports shared panel`
+  );
+}
+
+console.log('PASS admin-ops pwa');

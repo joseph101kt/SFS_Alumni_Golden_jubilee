@@ -8,10 +8,14 @@ export function chooseRegistrationEvent<T extends { id: string }>(events: T[]): 
   return null;
 }
 
-/** Only return to registration. Anything else is ignored. */
+/** Safe post-login return paths (registration or venue pass). Anything else is ignored. */
 export function safeRegistrationNext(next: string | null | undefined): string | null {
-  if (!next || !next.startsWith('/registration') || next.startsWith('//') || next.includes('://')) {
-    return null;
+  if (!next || next.startsWith('//') || next.includes('://')) return null;
+  if (next.startsWith('/registration')) return next;
+  if (next === '/event-app' || next.startsWith('/event-app?')) return next;
+  if (next === '/event-app/pass' || next.startsWith('/event-app/pass?')) return next;
+  if (next === '/admin-app' || next.startsWith('/admin-app/') || next.startsWith('/admin-app?')) {
+    return next;
   }
-  return next;
+  return null;
 }

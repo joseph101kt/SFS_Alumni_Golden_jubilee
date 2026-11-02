@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
+    id: '/event-app',
     name: 'SFS Golden Jubilee',
     short_name: 'SFS Jubilee',
     description: 'Venue pass, day-of details, and gate check-in for the SFS Golden Jubilee.',
@@ -11,6 +12,9 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: 'portrait-primary',
     background_color: '#001628',
     theme_color: '#001628',
+    categories: ['lifestyle', 'social'],
+    lang: 'en',
+    dir: 'ltr',
     icons: [
       {
         src: '/icons/icon-192.png',

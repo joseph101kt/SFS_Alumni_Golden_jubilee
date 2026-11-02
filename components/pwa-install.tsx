@@ -9,29 +9,63 @@ type BeforeInstallPromptEvent = Event & {
 
 function isIos() {
   if (typeof navigator === 'undefined') return false;
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  );
+}
+
+function isAndroid() {
+  if (typeof navigator === 'undefined') return false;
+  return /Android/i.test(navigator.userAgent);
+}
+
+function isInAppBrowser() {
+  if (typeof navigator === 'undefined') return false;
+  return /FBAN|FBAV|Instagram|Line\/|WhatsApp|MicroMessenger|Twitter/i.test(navigator.userAgent);
 }
 
 function isStandalone() {
   if (typeof window === 'undefined') return false;
   return (
     window.matchMedia('(display-mode: standalone)').matches ||
-    // iOS Safari
     Boolean((navigator as Navigator & { standalone?: boolean }).standalone)
   );
 }
 
-export default function PwaInstall() {
+export default function PwaInstall({
+  shareMode = false,
+  startPath = '/event-app',
+}: {
+  shareMode?: boolean;
+  startPath?: string;
+}) {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
   const [ios, setIos] = useState(false);
+  const [android, setAndroid] = useState(false);
+  const [inApp, setInApp] = useState(false);
   const [busy, setBusy] = useState(false);
   const [hint, setHint] = useState('');
+  const [pageUrl, setPageUrl] = useState('');
+  const [qrSrc, setQrSrc] = useState('');
 
   useEffect(() => {
     setInstalled(isStandalone());
     setIos(isIos());
+    setAndroid(isAndroid());
+    setInApp(isInAppBrowser());
+    const path = startPath.startsWith('/') ? startPath : `/${startPath}`;
+    const url = `${window.location.origin}${path}`;
+    setPageUrl(url);
+
+    let cancel = false;
+    import('qrcode')
+      .then((mod) => mod.default.toDataURL(url, { margin: 1, width: 200, errorCorrectionLevel: 'M' }))
+      .then((dataUrl) => {
+        if (!cancel) setQrSrc(dataUrl);
+      })
+      .catch(() => {});
 
     const onBip = (e: Event) => {
       e.preventDefault();
@@ -44,10 +78,11 @@ export default function PwaInstall() {
     window.addEventListener('beforeinstallprompt', onBip);
     window.addEventListener('appinstalled', onInstalled);
     return () => {
+      cancel = true;
       window.removeEventListener('beforeinstallprompt', onBip);
       window.removeEventListener('appinstalled', onInstalled);
     };
-  }, []);
+  }, [startPath]);
 
   async function installChrome() {
     if (!deferred) return;
@@ -60,16 +95,55 @@ export default function PwaInstall() {
         setInstalled(true);
         setDeferred(null);
       } else {
-        setHint('Install was dismissed. You can also use the browser menu → Install app.');
+        setHint('Install was dismissed. Use the browser menu → Install app.');
       }
     } catch {
-      setHint('Could not open the install prompt. Use the browser menu → Install app / Add to Home screen.');
+      setHint('Could not open the install prompt. Use the browser menu → Install app.');
     } finally {
       setBusy(false);
     }
   }
 
-  if (installed) {
+  async function checkReady() {
+    setHint('');
+    if (!('serviceWorker' in navigator)) {
+      setHint('This browser cannot install web apps. Open Chrome (Android) or Safari (iPhone).');
+      return;
+    }
+    try {
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      await reg.update().catch(() => {});
+      await navigator.serviceWorker.ready;
+      const manifestLink = document.querySelector('link[rel="manifest"]');
+      if (!manifestLink) {
+        setHint('Manifest missing. Refresh the page, then try again.');
+        return;
+      }
+      setHint(
+        deferred
+          ? 'Ready — tap Install app above.'
+          : android
+            ? 'Service worker ready. Open Chrome ⋮ → Install app / Add to Home screen.'
+            : ios
+              ? 'Ready. Share is in Safari’s toolbar (bottom or top) — not on this page. Tap Share → Add to Home Screen.'
+              : 'Ready. Use the QR on a phone, then follow iPhone or Android steps below.'
+      );
+    } catch {
+      setHint('Could not register the service worker. Hard-refresh and try again.');
+    }
+  }
+
+  async function copyLink() {
+    if (!pageUrl) return;
+    try {
+      await navigator.clipboard.writeText(pageUrl);
+      setHint('Link copied. Open it on your phone in Safari or Chrome.');
+    } catch {
+      setHint(pageUrl);
+    }
+  }
+
+  if (installed && !shareMode) {
     return (
       <section className="mt-6 rounded-2xl border border-primary/10 bg-secondary-container/40 p-5">
         <h2 className="text-headline-sm text-primary">Installed</h2>
@@ -80,60 +154,129 @@ export default function PwaInstall() {
     );
   }
 
-  return (
-    <section className="mt-6 rounded-2xl border border-jubilee-gold-light bg-surface-paper p-5 shadow-sm">
-      <h2 className="text-headline-sm text-primary">Add to your phone</h2>
-      <p className="mt-2 text-body-sm text-on-surface-variant">
-        Browsers do not always show an install banner. Use the button or steps below.
-      </p>
+  const onPhone = ios || android;
+  const showQr = shareMode || !onPhone;
 
-      {deferred ? (
+  return (
+    <section
+      className={
+        shareMode
+          ? 'space-y-1'
+          : 'mt-6 rounded-2xl border border-jubilee-gold-light bg-surface-paper p-5 shadow-sm'
+      }
+    >
+      {!shareMode ? (
+        <>
+          <h2 className="text-headline-sm text-primary">Add to your phone</h2>
+          <p className="mt-2 text-body-sm text-on-surface-variant">
+            There is no Share / Install button on this webpage. Those controls live in your{' '}
+            <strong>phone browser</strong> (Safari or Chrome).
+          </p>
+        </>
+      ) : (
+        <p className="text-body-sm text-on-surface-variant">
+          Scan the QR on a phone, then follow iPhone or Android steps. Install controls live in{' '}
+          <strong>Safari</strong> or <strong>Chrome</strong> — not on this website.
+        </p>
+      )}
+
+      {inApp && (
+        <p className="mt-3 rounded-xl border border-error/30 bg-error/5 p-3 text-body-sm text-error">
+          You’re in an in-app browser (WhatsApp / Instagram / etc.). Tap ··· →{' '}
+          <strong>Open in {ios ? 'Safari' : 'Chrome'}</strong>, then come back to this page.
+        </p>
+      )}
+
+      {deferred && !shareMode ? (
         <button
           type="button"
           disabled={busy}
           onClick={() => void installChrome()}
-          className="mt-4 w-full min-h-12 rounded-xl bg-primary text-on-primary px-5 py-3 text-label-md uppercase tracking-wider disabled:opacity-50 cursor-pointer"
+          className="mt-4 w-full min-h-12 rounded-xl bg-primary text-on-primary px-5 py-3 text-label-md uppercase tracking-wider disabled:opacity-50 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30"
         >
           {busy ? 'Opening…' : 'Install app'}
         </button>
-      ) : ios ? (
-        <div className="mt-4 rounded-xl border border-primary/15 bg-white p-4 text-body-sm text-on-surface space-y-2">
-          <p className="font-medium text-primary">iPhone / iPad (Safari only)</p>
-          <ol className="list-decimal pl-5 space-y-1.5">
-            <li>Tap the <strong>Share</strong> button (square with ↑) at the bottom of Safari.</li>
-            <li>Scroll and tap <strong>Add to Home Screen</strong>.</li>
-            <li>Tap <strong>Add</strong>.</li>
-          </ol>
+      ) : null}
+
+      {showQr ? (
+        <div className="mt-4 rounded-xl border border-primary/15 bg-white p-4 text-body-sm text-on-surface space-y-3">
+          <p className="font-medium text-primary">Open on your phone</p>
           <p className="text-on-surface-variant">
-            If you opened this inside WhatsApp/Instagram, tap ··· → <strong>Open in Safari</strong> first.
+            Scan this QR, or copy the link and open it in Safari (iPhone) or Chrome (Android).
           </p>
-        </div>
-      ) : (
-        <div className="mt-4 rounded-xl border border-primary/15 bg-white p-4 text-body-sm text-on-surface space-y-2">
-          <p className="font-medium text-primary">Android / Chrome</p>
-          <ol className="list-decimal pl-5 space-y-1.5">
-            <li>Tap the <strong>⋮</strong> menu (top right).</li>
-            <li>Tap <strong>Install app</strong> or <strong>Add to Home screen</strong>.</li>
-          </ol>
-          <p className="text-on-surface-variant">
-            Stay on this page a few seconds after it loads (Chrome needs the service worker ready).
-            Then reopen the menu if Install is missing.
-          </p>
+          {qrSrc ? (
+            <img
+              src={qrSrc}
+              alt="QR code linking to the event app"
+              width={200}
+              height={200}
+              className="mx-auto rounded-lg bg-white p-2"
+            />
+          ) : null}
+          <p className="break-all text-center text-label-sm text-primary">{pageUrl}</p>
           <button
             type="button"
-            onClick={() => {
-              void navigator.serviceWorker?.ready.then(() => {
-                setHint(
-                  'Service worker is ready. Open Chrome menu (⋮) → Install app / Add to Home screen.'
-                );
-              });
-            }}
-            className="mt-2 rounded-lg border border-primary/20 px-4 py-2.5 text-label-sm text-primary cursor-pointer"
+            onClick={() => void copyLink()}
+            className="w-full rounded-lg border border-primary/20 px-4 py-2.5 text-label-sm text-primary cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30"
           >
-            Check install readiness
+            Copy link
           </button>
         </div>
-      )}
+      ) : null}
+
+      <div
+        className={`mt-4 rounded-xl border p-4 text-body-sm text-on-surface space-y-2 ${
+          ios ? 'border-jubilee-gold-deep bg-secondary-container/40' : 'border-primary/15 bg-white'
+        }`}
+      >
+        <p className="font-medium text-primary">iPhone / iPad</p>
+        <p className="text-on-surface-variant">
+          Share is <strong>not on this page</strong> — it’s the Safari button at the bottom of the screen
+          (square with an arrow ↑).
+        </p>
+        <ol className="list-decimal pl-5 space-y-1.5">
+          <li>
+            Open this link in the <strong>Safari</strong> app (blue compass icon). Chrome on iPhone cannot
+            install it.
+          </li>
+          <li>
+            Tap <strong>Share</strong> in Safari’s toolbar (bottom center on most iPhones).
+          </li>
+          <li>
+            Scroll the sheet and tap <strong>Add to Home Screen</strong>, then <strong>Add</strong>.
+          </li>
+        </ol>
+      </div>
+
+      <div
+        className={`mt-4 rounded-xl border p-4 text-body-sm text-on-surface space-y-2 ${
+          android ? 'border-jubilee-gold-deep bg-secondary-container/40' : 'border-primary/15 bg-white'
+        }`}
+      >
+        <p className="font-medium text-primary">Android</p>
+        <ol className="list-decimal pl-5 space-y-1.5">
+          <li>
+            Open this page in <strong>Chrome</strong>.
+          </li>
+          <li>
+            Tap <strong>⋮</strong> at the top right of Chrome (browser menu, not this page).
+          </li>
+          <li>
+            Tap <strong>Install app</strong> or <strong>Add to Home screen</strong>.
+          </li>
+        </ol>
+        <p className="text-on-surface-variant">
+          If Install is missing, stay on this page ~5 seconds, then open the menu again.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => void checkReady()}
+        className="mt-4 rounded-lg border border-primary/20 px-4 py-2.5 text-label-sm text-primary cursor-pointer"
+      >
+        Check install readiness
+      </button>
 
       {hint ? <p className="mt-3 text-body-sm text-navy-subtle">{hint}</p> : null}
     </section>

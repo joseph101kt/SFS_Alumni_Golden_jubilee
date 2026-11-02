@@ -2,7 +2,7 @@
 import type { Metadata, Viewport } from 'next';
 import { EB_Garamond, Manrope } from 'next/font/google';
 import './globals.css';
-import NavBar from '@/components/navbar';
+import NavHost from '@/components/nav-host';
 import PwaRegister from '@/components/pwa-register';
 
 const ebGaramond = EB_Garamond({
@@ -68,7 +68,7 @@ export default function RootLayout({
       </head>
       <body className="bg-surface font-body-md text-body-md text-on-surface antialiased min-h-screen flex flex-col">
         <PwaRegister />
-        <NavBar />
+        <NavHost />
         {children}
       </body>
     </html>

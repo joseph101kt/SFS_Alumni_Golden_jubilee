@@ -6,7 +6,8 @@ export async function GET() {
   const gate = await hasGateSession();
   const admin = await requireVerifiedAdmin();
   return NextResponse.json({
-    ok: gate || Boolean(admin),
+    // Volunteer scanner unlock = gate PIN cookie only (admin login does not skip PIN).
+    ok: gate,
     gate,
     admin: Boolean(admin),
     pinConfigured: gatePinConfigured(),

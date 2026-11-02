@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import EventPushOptIn from '@/components/event-push-opt-in';
 import MemberGate from '@/components/member-gate';
 import MemberVenuePass from '@/components/member-venue-pass';
 
@@ -17,6 +18,7 @@ export default function EventAppPassPage() {
       <div className="mt-6">
         <MemberGate mode="signed-in" loginNext="/event-app/pass">
           <MemberVenuePass mode="pass-only" />
+          <EventPushOptIn auto compact />
         </MemberGate>
       </div>
     </main>
