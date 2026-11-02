@@ -21,6 +21,11 @@ const manifest = read('public/admin-app.webmanifest');
 assert(manifest.includes('"id": "/admin-app"'), 'manifest id');
 assert(manifest.includes('"start_url": "/admin-app"'), 'manifest start_url');
 assert(manifest.includes('SFS Ops'), 'manifest short name');
+assert(manifest.includes('icon-ops-192.png'), 'ops uses distinct 192 icon');
+assert(manifest.includes('icon-ops-512.png'), 'ops uses distinct 512 icon');
+assert(!manifest.includes('/icons/icon-192.png'), 'ops does not reuse alumni 192 icon');
+assert(existsSync(join(root, 'public/icons/icon-ops-192.png')), 'ops 192 icon file exists');
+assert(existsSync(join(root, 'public/icons/icon-ops-512.png')), 'ops 512 icon file exists');
 
 const nav = read('components/nav-host.tsx');
 assert(nav.includes('/admin-app'), 'nav hides admin-app chrome');

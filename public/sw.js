@@ -1,6 +1,11 @@
 /* SFS Jubilee event PWA service worker — icons + web push (do not cache HTML shells) */
-const CACHE = 'sfs-jubilee-shell-v3';
-const PRECACHE = ['/icons/icon-192.png', '/icons/icon-512.png'];
+const CACHE = 'sfs-jubilee-shell-v4';
+const PRECACHE = [
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+  '/icons/icon-ops-192.png',
+  '/icons/icon-ops-512.png',
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
