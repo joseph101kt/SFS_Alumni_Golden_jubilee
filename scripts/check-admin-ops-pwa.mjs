@@ -48,6 +48,16 @@ assert(
   adminShell.includes('startPath="/admin-app"') || adminShell.includes("startPath='/admin-app'"),
   'admin Get the app targets admin-app'
 );
+assert(adminShell.includes('appLabel="SFS Ops"') || adminShell.includes("appLabel='SFS Ops'"), 'ops QR labeled SFS Ops');
+const portal = read('components/portal-shell.tsx');
+assert(
+  portal.includes('startPath="/event-app"') || portal.includes("startPath='/event-app'"),
+  'alumni Get the app targets event-app'
+);
+assert(
+  !portal.includes('startPath="/admin-app"'),
+  'alumni Get the app must not point at admin-app'
+);
 
 const install = read('components/pwa-install.tsx');
 assert(install.includes('startPath'), 'PwaInstall has startPath');

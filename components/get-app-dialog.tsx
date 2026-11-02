@@ -7,12 +7,14 @@ export default function GetAppDialog({
   open,
   onClose,
   startPath = '/event-app',
+  appLabel = 'SFS Jubilee',
   eyebrow = 'Event app',
   title = 'Get the app',
 }: {
   open: boolean;
   onClose: () => void;
   startPath?: string;
+  appLabel?: string;
   eyebrow?: string;
   title?: string;
 }) {
@@ -70,7 +72,7 @@ export default function GetAppDialog({
           </button>
         </div>
         <div className="overflow-y-auto px-5 py-4 flex-1">
-          <PwaInstall shareMode startPath={startPath} />
+          <PwaInstall key={startPath} shareMode startPath={startPath} appLabel={appLabel} />
         </div>
       </div>
     </div>

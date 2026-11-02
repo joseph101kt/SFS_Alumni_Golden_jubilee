@@ -114,8 +114,9 @@ export default function AdminShell({
         open={getAppOpen}
         onClose={() => setGetAppOpen(false)}
         startPath="/admin-app"
+        appLabel="SFS Ops"
         eyebrow="SFS Ops"
-        title="Get the app"
+        title="Get the ops app"
       />
     </div>
   );

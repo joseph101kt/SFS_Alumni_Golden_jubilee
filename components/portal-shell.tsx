@@ -128,7 +128,14 @@ export default function PortalShell({
         </div>
       </div>
       {sidebar ? (
-        <GetAppDialog open={getAppOpen} onClose={() => setGetAppOpen(false)} />
+        <GetAppDialog
+          open={getAppOpen}
+          onClose={() => setGetAppOpen(false)}
+          startPath="/event-app"
+          appLabel="SFS Jubilee"
+          eyebrow="Event app"
+          title="Get the event app"
+        />
       ) : null}
     </main>
   );

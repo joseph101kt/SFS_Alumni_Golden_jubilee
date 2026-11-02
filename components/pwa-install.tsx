@@ -36,9 +36,12 @@ function isStandalone() {
 export default function PwaInstall({
   shareMode = false,
   startPath = '/event-app',
+  appLabel = 'SFS Jubilee',
 }: {
   shareMode?: boolean;
   startPath?: string;
+  /** Shown above the QR so alumni vs ops codes are not confused. */
+  appLabel?: string;
 }) {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
@@ -58,10 +61,11 @@ export default function PwaInstall({
     const path = startPath.startsWith('/') ? startPath : `/${startPath}`;
     const url = `${window.location.origin}${path}`;
     setPageUrl(url);
+    setQrSrc(''); // avoid showing a previous app's QR while regenerating
 
     let cancel = false;
     import('qrcode')
-      .then((mod) => mod.default.toDataURL(url, { margin: 1, width: 200, errorCorrectionLevel: 'M' }))
+      .then((mod) => mod.default.toDataURL(url, { margin: 1, width: 220, errorCorrectionLevel: 'M' }))
       .then((dataUrl) => {
         if (!cancel) setQrSrc(dataUrl);
       })
@@ -175,8 +179,9 @@ export default function PwaInstall({
         </>
       ) : (
         <p className="text-body-sm text-on-surface-variant">
-          Scan the QR on a phone, then follow iPhone or Android steps. Install controls live in{' '}
-          <strong>Safari</strong> or <strong>Chrome</strong> — not on this website.
+          This QR installs <strong>{appLabel}</strong> only ({startPath.startsWith('/') ? startPath : `/${startPath}`}
+          ). Scan on a phone, then use <strong>Safari</strong> or <strong>Chrome</strong> install controls — not
+          this website.
         </p>
       )}
 
@@ -200,26 +205,31 @@ export default function PwaInstall({
 
       {showQr ? (
         <div className="mt-4 rounded-xl border border-primary/15 bg-white p-4 text-body-sm text-on-surface space-y-3">
-          <p className="font-medium text-primary">Open on your phone</p>
-          <p className="text-on-surface-variant">
+          <p className="font-medium text-primary text-center text-headline-sm">{appLabel}</p>
+          <p className="text-center text-label-sm uppercase tracking-[0.14em] text-jubilee-gold-deep font-bold">
+            {startPath.startsWith('/') ? startPath : `/${startPath}`}
+          </p>
+          <p className="text-on-surface-variant text-center">
             Scan this QR, or copy the link and open it in Safari (iPhone) or Chrome (Android).
           </p>
           {qrSrc ? (
             <img
               src={qrSrc}
-              alt="QR code linking to the event app"
-              width={200}
-              height={200}
+              alt={`QR code for ${appLabel} (${startPath})`}
+              width={220}
+              height={220}
               className="mx-auto rounded-lg bg-white p-2"
             />
-          ) : null}
-          <p className="break-all text-center text-label-sm text-primary">{pageUrl}</p>
+          ) : (
+            <p className="text-center text-body-sm text-on-surface-variant">Generating QR…</p>
+          )}
+          <p className="break-all text-center text-body-sm font-medium text-primary">{pageUrl}</p>
           <button
             type="button"
             onClick={() => void copyLink()}
             className="w-full rounded-lg border border-primary/20 px-4 py-2.5 text-label-sm text-primary cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30"
           >
-            Copy link
+            Copy {appLabel} link
           </button>
         </div>
       ) : null}
