@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import GetAppDialog from '@/components/get-app-dialog';
 
 const LINKS: { href: string; label: string; icon: string; match?: 'exact' | 'prefix' }[] = [
   { href: '/admin', label: 'Overview', icon: 'dashboard', match: 'exact' },
@@ -34,6 +35,7 @@ export default function AdminShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [getAppOpen, setGetAppOpen] = useState(false);
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -72,6 +74,16 @@ export default function AdminShell({
         })}
         <button
           type="button"
+          onClick={() => setGetAppOpen(true)}
+          className="inline-flex items-center gap-2.5 whitespace-nowrap rounded-xl px-3.5 py-2.5 text-label-sm text-navy-subtle hover:bg-secondary-container/40 hover:text-primary transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30"
+        >
+          <span className="material-symbols-outlined text-[18px] text-jubilee-gold-deep">
+            install_mobile
+          </span>
+          Get the app
+        </button>
+        <button
+          type="button"
           onClick={() => void handleLogout()}
           className="mt-2 lg:mt-4 inline-flex items-center gap-2.5 whitespace-nowrap rounded-xl px-3.5 py-2.5 text-label-sm text-error hover:bg-error-container/40 transition-colors cursor-pointer border border-error/20"
         >
@@ -98,6 +110,13 @@ export default function AdminShell({
         </div>
         {children}
       </div>
+      <GetAppDialog
+        open={getAppOpen}
+        onClose={() => setGetAppOpen(false)}
+        startPath="/admin-app"
+        eyebrow="SFS Ops"
+        title="Get the app"
+      />
     </div>
   );
 }

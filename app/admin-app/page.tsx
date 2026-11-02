@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import AdminOpsShell from '@/components/admin-ops-shell';
-import PwaInstall from '@/components/pwa-install';
 
 const TOOLS: { href: string; label: string; hint: string; icon: string }[] = [
   {
@@ -29,7 +28,7 @@ export default function AdminAppHomePage() {
   return (
     <AdminOpsShell title="Committee ops">
       <p className="text-body-sm text-on-surface-variant mb-4">
-        Phone tools for day-of and committee work. Desktop admin stays at /admin.
+        Phone tools for day-of and committee work. Install from desktop Admin → Get the app.
       </p>
       <nav aria-label="Ops tools" className="grid gap-3">
         {TOOLS.map((t) => (
@@ -49,9 +48,6 @@ export default function AdminAppHomePage() {
           </Link>
         ))}
       </nav>
-      <div className="mt-8">
-        <PwaInstall shareMode startPath="/admin-app" />
-      </div>
     </AdminOpsShell>
   );
 }

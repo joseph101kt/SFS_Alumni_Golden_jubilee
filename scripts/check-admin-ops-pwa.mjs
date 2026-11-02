@@ -35,13 +35,18 @@ const home = read('app/admin-app/page.tsx');
 assert(home.includes('/admin-app/event-ops'), 'home links event-ops');
 assert(home.includes('/admin-app/approvals'), 'home links approvals');
 assert(home.includes('/admin-app/broadcast'), 'home links broadcast');
+assert(!home.includes('PwaInstall'), 'install help is not inline on admin-app home');
+
+const adminShell = read('components/admin-shell.tsx');
+assert(adminShell.includes('Get the app'), 'desktop admin has Get the app');
 assert(
-  home.includes('startPath="/admin-app"') || home.includes("startPath='/admin-app'"),
-  'home install targets admin-app'
+  adminShell.includes('startPath="/admin-app"') || adminShell.includes("startPath='/admin-app'"),
+  'admin Get the app targets admin-app'
 );
 
 const install = read('components/pwa-install.tsx');
 assert(install.includes('startPath'), 'PwaInstall has startPath');
+
 
 for (const panel of [
   'components/admin-tools/event-ops-panel.tsx',
