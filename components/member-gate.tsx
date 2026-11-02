@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 type Me = {
   id: string;
@@ -21,6 +22,7 @@ export default function MemberGate({
   /** Post-login return path (must pass safeRegistrationNext). */
   loginNext?: string;
 }) {
+  const router = useRouter();
   const loginHref = loginNext
     ? `/login?next=${encodeURIComponent(loginNext)}`
     : '/login';
@@ -28,6 +30,7 @@ export default function MemberGate({
     ? `/signup?next=${encodeURIComponent(loginNext)}`
     : '/signup';
   const [state, setState] = useState('loading');
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -64,7 +67,33 @@ export default function MemberGate({
     };
   }, [mode]);
 
+  // Admin tools: unsigned users go straight to login (login first).
+  useEffect(() => {
+    if (mode !== 'admin' || state !== 'signed-out') return;
+    router.replace(loginHref);
+  }, [mode, state, loginHref, router]);
+
+  async function switchToCommitteeLogin() {
+    setBusy(true);
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch {
+      /* still send them to login */
+    }
+    router.replace(loginHref);
+    router.refresh();
+  }
+
   if (state === 'allowed') return <>{children}</>;
+
+  if (mode === 'admin' && state === 'signed-out') {
+    return (
+      <section className="max-w-3xl rounded-2xl border border-outline-variant bg-white p-8">
+        <h2 className="text-headline-sm text-primary">Sign in to continue</h2>
+        <p className="text-body-sm text-on-surface-variant mt-3">Redirecting to login…</p>
+      </section>
+    );
+  }
 
   const title =
     state === 'loading'
@@ -89,7 +118,9 @@ export default function MemberGate({
           : state === 'rejected'
             ? 'Your membership is not currently active. Please contact the alumni committee.'
             : state === 'forbidden'
-              ? 'This workspace is restricted to authorised, verified committee administrators.'
+              ? mode === 'admin'
+                ? 'You’re signed in, but this app is for verified committee administrators. Sign in with a committee account to continue.'
+                : 'This workspace is restricted to authorised, verified committee administrators.'
               : 'The alumni database is not fully configured. Apply the alumni_accounts migration and set AUTH_SECRET plus SUPABASE_SERVICE_ROLE_KEY.';
 
   return (
@@ -104,6 +135,18 @@ export default function MemberGate({
           <Link className="px-5 py-3 rounded-lg bg-secondary-container text-primary" href={signupHref}>
             Create account
           </Link>
+        </div>
+      )}
+      {state === 'forbidden' && mode === 'admin' && (
+        <div className="flex flex-wrap gap-3 mt-5">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void switchToCommitteeLogin()}
+            className="px-5 py-3 rounded-lg bg-primary text-on-primary text-label-md disabled:opacity-50 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30"
+          >
+            {busy ? 'Signing out…' : 'Sign in with committee account'}
+          </button>
         </div>
       )}
     </section>
