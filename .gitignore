@@ -12,6 +12,11 @@
 /coverage
 /.next/
 /out/
+videos/walkthrough/out/
+videos/walkthrough/vo/
+videos/walkthrough/node_modules/
+videos/walkthrough/out/work/
+
 /build
 
 # Secrets and local configuration
@@ -29,6 +34,11 @@ _local.html
 _probe.html
 /graphify-out/
 supabase/.temp/
+# Live DB dumps (PII + password hashes) — regenerate with scripts/dump-supabase-inserts.mjs
+migrations/02_data/full_data_dump.sql
+migrations/02_data/optional_users.sql
+migrations/02_data/dump_summary.json
+migrations/02_data/tables/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
