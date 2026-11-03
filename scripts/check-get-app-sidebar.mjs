@@ -24,6 +24,9 @@ assert(
 assert(dialog.includes('role="dialog"') || dialog.includes("role='dialog'"), 'opens a dialog');
 assert(install.includes('/event-app'), 'QR/link targets event-app');
 assert(install.includes('iPhone'), 'iPhone install steps');
+assert(install.includes('Edit Actions'), 'old iPhone Add to Home Screen recovery');
+assert(install.includes('isIosNonSafari'), 'warn when iPhone is not Safari');
+assert(install.includes('swipe sideways'), 'tell users to swipe Share sheet icons');
 assert(install.includes('Android'), 'Android install steps');
 assert(
   install.includes('shareMode') || install.includes('alwaysShowQr'),

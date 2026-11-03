@@ -1,0 +1,84 @@
+[
+  {
+    "id": "01-intro-login",
+    "path": "/login",
+    "action": "login-admin",
+    "vo": "Hello everyone. This is the desktop Admin web application for the Core Committee — the full browser back office, not the phone ops app. Click Login, sign in with your committee account, and open Admin."
+  },
+  {
+    "id": "02-overview",
+    "path": "/admin",
+    "vo": "Overview shows pending approvals, registrations, money received and still due, unpaid or partial payments, published events, and pending memberships. Each card is a shortcut into that tool."
+  },
+  {
+    "id": "03-event-ops",
+    "path": "/admin/event-ops",
+    "scroll": true,
+    "vo": "Click Event ops in the sidebar. Select an event to see registration counts, people, paid, partial, pending, cancelled, and check-in totals, plus money figures and exception rows for follow-up."
+  },
+  {
+    "id": "04-approvals",
+    "path": "/admin/approvals",
+    "scroll": true,
+    "vo": "Click Approvals. Review pending memberships, memories, and stories. Approve or reject each item. Membership approval unlocks directory access; memories and stories publish only after approval."
+  },
+  {
+    "id": "05-check-in",
+    "path": "/admin/check-in",
+    "vo": "Click Check-in. This is the desktop check-in workspace for venue entry — look up or confirm guests as they arrive."
+  },
+  {
+    "id": "06-broadcast",
+    "path": "/admin/broadcast",
+    "vo": "Click Broadcast. Compose a short message when plans change — timing, venue notes, or urgent updates for alumni on the event experience."
+  },
+  {
+    "id": "07-membership",
+    "path": "/admin/membership",
+    "scroll": true,
+    "vo": "Click Membership. Review applications and statuses — verified, pending, or blocked — and approve or reject applicants."
+  },
+  {
+    "id": "08-events",
+    "path": "/admin/events",
+    "vo": "Click Events. Manage the event catalog. Open an event to edit schedule and pricing, or create a new celebration. Pricing here drives the alumni registration form."
+  },
+  {
+    "id": "09-registrations",
+    "path": "/admin/registrations",
+    "scroll": true,
+    "vo": "Click Registrations. Search and filter who registered, payment status, and codes. Open a row for detail, and mark paid when Finance confirms."
+  },
+  {
+    "id": "10-memories",
+    "path": "/admin/memories",
+    "vo": "Click Memories. Moderate photo submissions before they appear in the public memories gallery."
+  },
+  {
+    "id": "11-stories",
+    "path": "/admin/stories",
+    "vo": "Click Stories. Moderate written stories the same way before members can read them under Stories."
+  },
+  {
+    "id": "12-committee",
+    "path": "/admin/committee",
+    "vo": "Click Committee. Maintain Core Committee names and roles. What you save can appear on the public Association section."
+  },
+  {
+    "id": "13-donations",
+    "path": "/admin/donations",
+    "scroll": true,
+    "vo": "Click Donate setup. Create and edit donation causes and review recent donations. Alumni choose from these causes on Donate to a Cause."
+  },
+  {
+    "id": "14-import",
+    "path": "/admin/import",
+    "vo": "Click Import when you need bulk alumni data. Follow the on-screen format so rows import cleanly."
+  },
+  {
+    "id": "15-wrap",
+    "path": "/admin",
+    "action": "logout",
+    "vo": "Return to Overview anytime from the sidebar. When your session ends, Log out so the shared computer is clear. Thank you for serving the Golden Jubilee. Once SFS, always SFS."
+  }
+]

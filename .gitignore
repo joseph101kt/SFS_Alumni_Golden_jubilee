@@ -16,6 +16,8 @@ videos/walkthrough/out/
 videos/walkthrough/vo/
 videos/walkthrough/node_modules/
 videos/walkthrough/out/work/
+videos/walkthrough/graphify-out/
+videos/.DS_Store
 
 /build
 

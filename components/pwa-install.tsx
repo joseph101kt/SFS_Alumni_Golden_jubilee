@@ -25,6 +25,12 @@ function isInAppBrowser() {
   return /FBAN|FBAV|Instagram|Line\/|WhatsApp|MicroMessenger|Twitter/i.test(navigator.userAgent);
 }
 
+/** Chrome/Firefox/Edge on iOS — Share sheet has no Add to Home Screen. */
+function isIosNonSafari() {
+  if (typeof navigator === 'undefined' || !isIos()) return false;
+  return /CriOS|FxiOS|EdgiOS|OPiOS|YaBrowser/i.test(navigator.userAgent);
+}
+
 function isStandalone() {
   if (typeof window === 'undefined') return false;
   return (
@@ -48,6 +54,7 @@ export default function PwaInstall({
   const [ios, setIos] = useState(false);
   const [android, setAndroid] = useState(false);
   const [inApp, setInApp] = useState(false);
+  const [iosNonSafari, setIosNonSafari] = useState(false);
   const [busy, setBusy] = useState(false);
   const [hint, setHint] = useState('');
   const [pageUrl, setPageUrl] = useState('');
@@ -58,6 +65,7 @@ export default function PwaInstall({
     setIos(isIos());
     setAndroid(isAndroid());
     setInApp(isInAppBrowser());
+    setIosNonSafari(isIosNonSafari());
     const path = startPath.startsWith('/') ? startPath : `/${startPath}`;
     const url = `${window.location.origin}${path}`;
     setPageUrl(url);
@@ -192,6 +200,14 @@ export default function PwaInstall({
         </p>
       )}
 
+      {iosNonSafari && !inApp && (
+        <p className="mt-3 rounded-xl border border-error/30 bg-error/5 p-3 text-body-sm text-error">
+          This is not Safari. On iPhone, <strong>Add to Home Screen</strong> only appears in the{' '}
+          <strong>Safari</strong> app (blue compass). Copy the link, open Safari, paste it in the
+          address bar, then use Share.
+        </p>
+      )}
+
       {deferred && !shareMode ? (
         <button
           type="button"
@@ -242,20 +258,27 @@ export default function PwaInstall({
         <p className="font-medium text-primary">iPhone / iPad</p>
         <p className="text-on-surface-variant">
           Share is <strong>not on this page</strong> — it’s the Safari button at the bottom of the screen
-          (square with an arrow ↑).
+          (square with an arrow ↑). Must be <strong>Safari</strong>, not Chrome.
         </p>
         <ol className="list-decimal pl-5 space-y-1.5">
           <li>
-            Open this link in the <strong>Safari</strong> app (blue compass icon). Chrome on iPhone cannot
-            install it.
+            Open this link in the <strong>Safari</strong> app (blue compass icon).
           </li>
           <li>
-            Tap <strong>Share</strong> in Safari’s toolbar (bottom center on most iPhones).
+            Tap <strong>Share</strong> in Safari’s toolbar (bottom center on most iPhones; top on some
+            older models).
           </li>
           <li>
-            Scroll the sheet and tap <strong>Add to Home Screen</strong>, then <strong>Add</strong>.
+            In the bottom row of icons, <strong>swipe sideways</strong> until you see{' '}
+            <strong>Add to Home Screen</strong>, then tap it → <strong>Add</strong>.
           </li>
         </ol>
+        <p className="text-on-surface-variant border-t border-primary/10 pt-2 mt-2">
+          <strong>Not showing on older iPhones?</strong> In the Share sheet, scroll down and tap{' '}
+          <strong>Edit Actions</strong> (or <strong>Edit Favorites</strong>) → enable{' '}
+          <strong>Add to Home Screen</strong> → Done → open Share again. Do not use Bookmark — that only
+          saves inside Safari, not on the Home Screen.
+        </p>
       </div>
 
       <div

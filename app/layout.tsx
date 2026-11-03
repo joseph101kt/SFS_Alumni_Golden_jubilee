@@ -23,6 +23,8 @@ export const metadata: Metadata = {
     'Celebrating 50 glorious years of transformational education. Alumni registration and homecoming for SFS Shanthinagar golden jubilee.',
   keywords: ['alumni', 'golden jubilee', 'school reunion', 'SFS Shanthinagar', 'registration'],
   authors: [{ name: "St. Francis de Sales' High School" }],
+  // Static file — app/manifest.ts would always win and break /admin-app.webmanifest.
+  manifest: '/event-app.webmanifest',
   applicationName: 'SFS Golden Jubilee',
   appleWebApp: {
     capable: true,

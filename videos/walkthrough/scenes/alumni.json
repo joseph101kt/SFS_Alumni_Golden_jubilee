@@ -1,0 +1,86 @@
+[
+  {
+    "id": "01-home",
+    "path": "/",
+    "vo": "Hello everyone. This is the SFS Golden Jubilee alumni web application in your browser. We start on the public homepage. At the top you see the school emblem, name, and navigation. When signed out, Login, Association, and Sign up appear on the right."
+  },
+  {
+    "id": "02-home-scroll",
+    "path": "/",
+    "scroll": true,
+    "vo": "Scroll the homepage. After the jubilee hero comes the milestone bar — fifty years, alumni worldwide, house traditions, and celebrations. Next is the Principal’s Jubilee Welcome Message from Fr. Anil Kumar R, then the School Gallery and Campus Life, and further down the school address with Google Maps."
+  },
+  {
+    "id": "03-signup",
+    "path": "/signup",
+    "vo": "Click Sign up. This form creates a new alumni account. Enter your details here to join the portal. Membership may wait for committee verification before the directory and private pages unlock."
+  },
+  {
+    "id": "04-login",
+    "path": "/login",
+    "action": "login-alumni",
+    "vo": "Click Login. Your email is usually your username. Enter your password, then click Sign In. After a successful login you enter the alumni portal."
+  },
+  {
+    "id": "05-member-home",
+    "path": "/member",
+    "vo": "This is My Home. The portal menu across the top includes Home, Donate, People, Events, Stories, Memories, and My submissions. You are greeted by name and batch when available. Your venue pass appears here after event registration, and the primary button shows your next step."
+  },
+  {
+    "id": "06-donate",
+    "path": "/member/donate",
+    "vo": "Click Donate. Choose a cause such as the Golden Jubilee Fund, Student Support, or Association Operations. Pick a suggested amount, or Custom to type your own, optionally add a message, then continue to Razorpay. We will not complete a live payment in this recording."
+  },
+  {
+    "id": "07-people",
+    "path": "/directory",
+    "vo": "Click People. This is the alumni directory. Search and filter classmates by batch, city, and profession, then open a result to see member profile details."
+  },
+  {
+    "id": "08-events",
+    "path": "/events",
+    "vo": "Click Events. Here you see reunions and celebrations open for registration. Open the Golden Jubilee event when you are ready to register."
+  },
+  {
+    "id": "09-registration",
+    "path": "/registration",
+    "scroll": true,
+    "vo": "This is the Event Registration Form. Fill personal details, set food preference — Veg, Non-Veg, or No Food — and parking — Two-wheeler, Four-wheeler, or No Vehicle. Add guests when allowed. The fee total updates on screen. Click Save to store your choices, then Pay through Razorpay when ready."
+  },
+  {
+    "id": "10-stories",
+    "path": "/stories",
+    "vo": "Click Stories. Read published alumni stories. New stories appear only after committee approval."
+  },
+  {
+    "id": "11-memories",
+    "path": "/memories",
+    "vo": "Click Memories. Browse published photos from your batch and across SFS. Uploads also go through approval before they are public."
+  },
+  {
+    "id": "12-submissions",
+    "path": "/submissions",
+    "vo": "Click My submissions. Create and track what you send for review — memories, stories, or photographs. Enter batch details, write or upload, and submit. Status stays here until an admin approves or rejects."
+  },
+  {
+    "id": "13-association",
+    "path": "/about-association",
+    "vo": "Open the Association section. You see Alumni Association information and committee members maintained by Admin."
+  },
+  {
+    "id": "14-password",
+    "path": "/account/password",
+    "vo": "From My Home you can Change password. Use this screen anytime to update your login password securely."
+  },
+  {
+    "id": "15-recovery",
+    "path": "/account/recovery",
+    "vo": "Set Recovery questions — two answers — so you can reset access with your phone if you forget your password."
+  },
+  {
+    "id": "16-logout",
+    "path": "/member",
+    "action": "logout",
+    "vo": "When you are finished, click Log out in the header. You return to the public homepage. That is the full alumni web portal. Once SFS, always SFS. We look forward to welcoming you for the Golden Jubilee."
+  }
+]

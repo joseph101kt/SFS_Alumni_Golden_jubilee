@@ -1,0 +1,37 @@
+Hello everyone. This walkthrough is for the Core Committee using the desktop Admin web application in the browser. We will click every main Admin tool and explain what it is for. This is not the phone ops app — this is the full desktop back office.
+
+Open the site and click Login. Sign in with your committee admin account, then open Admin.
+
+You land on Overview. The cards summarize pending approvals, registrations, money received and still due, unpaid or partial payments, published events, and pending memberships. Each card is a shortcut — click one to jump to that tool.
+
+Look at the Admin sidebar. We will open every item from top to bottom.
+
+Click Event ops. Choose an event. You see registration counts, people, paid, partial, pending, cancelled, and check-in totals, plus money figures. Review exception rows such as unpaid balances so Finance can follow up.
+
+Click Approvals. Here pending memberships, memories, and stories wait for review. Open an item, check the details, then approve or reject. Membership approval unlocks directory and private alumni pages. Memories and stories only publish after approval.
+
+Click Check-in. This is the desktop check-in workspace for venue entry. Use it to look up or confirm guests as they arrive, alongside gate scanning on the day.
+
+Click Broadcast. Compose a short message for alumni using the event experience when plans change — timing, venue notes, or urgent updates. Keep broadcasts clear and brief.
+
+Click Membership. Review membership applications and statuses. Approve or reject applicants, and see who is verified, pending, or blocked.
+
+Click Events. This is the event catalog. Open an existing event to edit titles, schedule, pricing, and publishing. Use New event when you need another celebration or reunion. Pricing here drives what alumni see on the registration form.
+
+Click Registrations. Search and filter who registered, payment status, and codes. Open a row for detail. Mark paid or handle exceptions when Finance confirms. This is the detailed list behind Event ops totals.
+
+Click Memories. Moderate photo submissions — approve, reject, or manage what is public in the memories gallery.
+
+Click Stories. Moderate written stories the same way before they appear under Stories for members.
+
+Click Committee. Maintain Core Committee names and roles. What you save here can appear on the public Association section for alumni.
+
+Click Donate setup. Create and edit donation causes — for example Golden Jubilee Fund, Student Support, or Association Operations — and see recent donations. Alumni pick from these causes on Donate to a Cause.
+
+Click Import when you need to upload alumni or related data in bulk. Follow the on-screen format so rows import cleanly.
+
+Return to Overview anytime from the sidebar. Use Get the app only if you also want the separate phone ops shortcut — Event ops, Approvals, and Broadcast on mobile. Day-to-day committee work for this walkthrough stays in desktop Admin.
+
+When your session ends, Log out from the header so the shared computer is clear.
+
+Thank you for serving the Golden Jubilee. With these Admin tools you can verify members, run events and money, moderate content, manage committee details and donations, and keep every alum welcome home. Once SFS, always SFS.

@@ -1,0 +1,31 @@
+---
+description: After deploying or pointing test-sfs-alumni, also update alpha aliases
+alwaysApply: true
+---
+
+# Vercel: test + alpha together
+
+When the user asks to push, deploy, or update **test** (project `test-sfs-alumni` / `test-sfs-alumni.vercel.app`), always update **alpha** in the same step—do not leave alpha on an older deployment.
+
+## After a successful `vercel deploy --prod` (or equivalent)
+
+Point both alpha aliases at the new deployment URL:
+
+```bash
+DEP=<deployment-host>   # e.g. test-sfs-alumni-xxxxx-sfs25.vercel.app
+npx vercel alias set "$DEP" test-sfs-alumni.vercel.app
+npx vercel alias set "$DEP" test-sfs-alumni-alpha.vercel.app
+npx vercel alias set "$DEP" sfs-alumni-golden-jubilee-alpha.vercel.app
+```
+
+If production already aliased `test-sfs-alumni.vercel.app` via `--prod`, still run the two **alpha** alias commands.
+
+## URLs
+
+- Test: https://test-sfs-alumni.vercel.app
+- Alpha: https://test-sfs-alumni-alpha.vercel.app and https://sfs-alumni-golden-jubilee-alpha.vercel.app
+
+## Notes
+
+- Prefer explicit user approval when the environment requires it for deploy/alias.
+- A plain `git push` to `main` may trigger Vercel’s Git integration; if alpha is only an alias (not auto-updated), still run the alpha `vercel alias set` steps against the new production deployment after it is Ready.

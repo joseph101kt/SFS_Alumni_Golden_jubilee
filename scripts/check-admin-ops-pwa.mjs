@@ -17,6 +17,8 @@ function assert(cond, msg) {
   if (!cond) throw new Error(msg);
 }
 
+assert(!existsSync(join(root, 'app/manifest.ts')), 'app/manifest.ts must not exist (it overrides metadata.manifest)');
+
 const manifest = read('public/admin-app.webmanifest');
 assert(manifest.includes('"id": "/admin-app"'), 'manifest id');
 assert(manifest.includes('"start_url": "/admin-app"'), 'manifest start_url');
@@ -26,6 +28,18 @@ assert(manifest.includes('icon-ops-512.png'), 'ops uses distinct 512 icon');
 assert(!manifest.includes('/icons/icon-192.png'), 'ops does not reuse alumni 192 icon');
 assert(existsSync(join(root, 'public/icons/icon-ops-192.png')), 'ops 192 icon file exists');
 assert(existsSync(join(root, 'public/icons/icon-ops-512.png')), 'ops 512 icon file exists');
+
+const eventManifest = read('public/event-app.webmanifest');
+assert(eventManifest.includes('"id": "/event-app"'), 'event manifest id');
+assert(eventManifest.includes('"start_url": "/event-app"'), 'event manifest start_url');
+
+const rootLayout = read('app/layout.tsx');
+assert(rootLayout.includes("manifest: '/event-app.webmanifest'") || rootLayout.includes('manifest: "/event-app.webmanifest"'), 'root uses event-app.webmanifest');
+const adminLayout = read('app/admin-app/layout.tsx');
+assert(adminLayout.includes("manifest: '/admin-app.webmanifest'") || adminLayout.includes('manifest: "/admin-app.webmanifest"'), 'admin-app layout uses admin-app.webmanifest');
+
+const gate = read('components/member-gate.tsx');
+assert(!gate.includes('Redirecting to login'), 'admin-app must not auto-redirect signed-out (breaks ops install URL)');
 
 const nav = read('components/nav-host.tsx');
 assert(nav.includes('/admin-app'), 'nav hides admin-app chrome');

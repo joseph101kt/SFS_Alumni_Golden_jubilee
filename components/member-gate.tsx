@@ -67,11 +67,8 @@ export default function MemberGate({
     };
   }, [mode]);
 
-  // Admin tools: unsigned users go straight to login (login first).
-  useEffect(() => {
-    if (mode !== 'admin' || state !== 'signed-out') return;
-    router.replace(loginHref);
-  }, [mode, state, loginHref, router]);
+  // Keep signed-out users on /admin-app so Add to Home Screen / Install uses
+  // that URL + ops manifest (auto-redirect to /login installed the alumni app).
 
   async function switchToCommitteeLogin() {
     setBusy(true);
@@ -85,15 +82,6 @@ export default function MemberGate({
   }
 
   if (state === 'allowed') return <>{children}</>;
-
-  if (mode === 'admin' && state === 'signed-out') {
-    return (
-      <section className="max-w-3xl rounded-2xl border border-outline-variant bg-white p-8">
-        <h2 className="text-headline-sm text-primary">Sign in to continue</h2>
-        <p className="text-body-sm text-on-surface-variant mt-3">Redirecting to login…</p>
-      </section>
-    );
-  }
 
   const title =
     state === 'loading'

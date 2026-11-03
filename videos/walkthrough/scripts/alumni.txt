@@ -1,0 +1,37 @@
+Hello everyone. This is a full walkthrough of the SFS Golden Jubilee alumni web application in your browser — not the phone apps. We will click through every main screen and explain what each feature does.
+
+We start on the public homepage. At the top you see the school name, emblem, and navigation. When you are signed out, the top right shows Login, Association, and Sign up.
+
+Scroll the homepage. First is the jubilee hero. Below that, the milestone bar shows fifty years, alumni worldwide, house traditions, and the celebrations.
+
+Next is the Principal’s Jubilee Welcome Message from Fr. Anil Kumar R. Below that, the School Gallery and Campus Life photos. Further down you find campus information and the school address with Google Maps.
+
+Click Sign up in the top right. This is the create-account form. Enter your details here to join the portal. Your membership may wait for committee verification before directory and private pages unlock.
+
+Now click Login. Your email is usually your username. Enter your password and click Sign In.
+
+After a successful login you land in the alumni portal. Look at the portal menu across the top of My Home: Home, Donate, People, Events, Stories, Memories, and My submissions. We will open each one.
+
+My Home greets you by name and batch when available. Your venue pass appears here after event registration. The primary button is your next step — register for an event, or continue payment if something is unpaid.
+
+Click Donate to a Cause on My Home, or Donate in the portal menu. Pick a cause such as the Golden Jubilee Fund, Student Support, or Association Operations. Choose a suggested amount, or click Custom to type your own. You may add a short message. Then continue to Razorpay to pay. We will not complete a live payment in this recording.
+
+Click People in the portal menu. This is Find People — the alumni directory. Search and filter classmates by batch, city, and profession. Open a result to see the profile details available to members.
+
+Click Events. This lists reunions and celebrations open for registration. Click into the Golden Jubilee event, then open the registration form.
+
+On the registration form, fill personal details. Set food preference — Veg, Non-Veg, or No Food. Set parking — Two-wheeler, Four-wheeler, or No Vehicle. Add guests and meal choices when the form allows. The fee total updates on screen. Click Save so your choices are stored when you return. Then use Pay to complete registration through Razorpay when you are ready. Saved registrations stay available on your next login.
+
+Click Stories in the portal menu. Read published alumni stories. These appear only after committee approval.
+
+Click Memories. Browse published photos from your batch and across SFS. Again, new uploads go through approval before they are public.
+
+Click My submissions. Here you create and track what you send for review — memories, stories, or photographs. Enter batch details, write your story or attach photos, and submit. Status stays here until an admin approves or rejects. After approval, the content shows on Stories or Memories.
+
+Open Association from the site header when available, or About the association from My Home. You see Alumni Association information and committee members maintained by Admin.
+
+At the bottom of My Home you can Change password or set Recovery questions — two answers so you can reset access with your phone if you forget your password.
+
+When you are finished, use Log out in the header. You return to the public homepage.
+
+That is the full alumni web portal: home, account, My Home, donate, directory, events and registration, stories, memories, submissions, association, and account security. Once SFS, always SFS. We look forward to welcoming you for the Golden Jubilee.
