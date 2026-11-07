@@ -1,28 +1,25 @@
+// lib/events/existing-registration.ts
+// Shapes for a saved event registration and the merge that prefills the form from it.
+
 import {
-  guestsFromLegacy,
-  legacySummaryFromGuests,
+  guestsFromUnknown,
   normalizeFoodPreference,
-  normalizeGuests,
-  partySize,
   type FoodPreference,
   type GuestChoice,
-  type ParkingNeeded,
-} from '../registration';
-import { parseLocation } from '../registration-fields';
+} from '../registration/registration';
+import { parseLocation } from '../registration/registration-fields';
 
 export type ExistingRegistrationRow = {
-  number_of_guests: number;
-  food_preference: string | null;
-  parking_needed: string;
-  lunch: boolean;
-  dinner: boolean;
   attending: boolean;
+  self_lunch: boolean;
+  self_preference: string | null;
+  guests?: unknown;
+  number_of_guests?: number;
   phone_number: string | null;
   payment_status: string;
   amount_paid_paise?: number;
   amount_due_paise?: number;
   total_cost_paise?: number;
-  guests?: GuestChoice[] | null;
 };
 
 export type RegistrationProfileSnapshot = {
@@ -35,18 +32,6 @@ export type RegistrationProfileSnapshot = {
   current_location?: string | null;
 };
 
-export type RegistrationFormChoices = {
-  number_of_guests: number;
-  food_preference: FoodPreference;
-  parking_needed: ParkingNeeded;
-  lunch: boolean;
-  dinner: boolean;
-  attending: boolean;
-  phone_number?: string;
-  payment_status: string;
-  guests: GuestChoice[];
-};
-
 export type RegistrationPrefill = {
   full_name: string;
   last_name: string;
@@ -56,86 +41,36 @@ export type RegistrationPrefill = {
   section: string;
   city: string;
   country: string;
-  number_of_guests: number;
-  food_preference: FoodPreference;
-  parking_needed: ParkingNeeded;
-  lunch: boolean;
-  dinner: boolean;
   attending: boolean;
+  self_lunch: boolean;
+  self_preference: FoodPreference;
   guests: GuestChoice[];
   payment_status?: string;
-  amount_paid_paise?: number;
-  amount_due_paise?: number;
-  total_cost_paise?: number;
+  amount_paid_paise: number;
+  amount_due_paise: number;
+  total_cost_paise: number;
 };
-
-const PARKING: ParkingNeeded[] = ['none', '2-wheeler', '4-wheeler'];
-
-function guestsForRow(row: ExistingRegistrationRow): GuestChoice[] {
-  const people = partySize(Number(row.number_of_guests));
-  if (Array.isArray(row.guests) && row.guests.length > 0) {
-    return normalizeGuests(row.guests, people);
-  }
-  return guestsFromLegacy(
-    people,
-    row.food_preference,
-    Boolean(row.lunch),
-    Boolean(row.dinner)
-  );
-}
-
-export function registrationChoicesFromRow(
-  row: ExistingRegistrationRow | null | undefined
-): RegistrationFormChoices | null {
-  if (!row) return null;
-  const parking = PARKING.includes(row.parking_needed as ParkingNeeded)
-    ? (row.parking_needed as ParkingNeeded)
-    : 'none';
-  const guests = guestsForRow(row);
-  const summary = legacySummaryFromGuests(guests);
-  return {
-    number_of_guests: guests.length,
-    food_preference: normalizeFoodPreference(
-      summary.food_preference === 'mixed' ? guests[0]?.preference : summary.food_preference
-    ),
-    parking_needed: parking,
-    lunch: summary.lunch,
-    dinner: summary.dinner,
-    attending: row.attending !== false,
-    phone_number: row.phone_number || undefined,
-    payment_status: row.payment_status,
-    guests,
-  };
-}
 
 /** Merge account profile + saved event registration into registration-form fields. */
 export function mergeRegistrationPrefill(
   profile: RegistrationProfileSnapshot | null | undefined,
   row: ExistingRegistrationRow | null | undefined
 ): RegistrationPrefill {
-  const choices = registrationChoicesFromRow(row);
   const loc = parseLocation(profile?.current_location || '');
-  const phone = choices?.phone_number || profile?.phone_number || '';
-  const guests =
-    choices?.guests ??
-    guestsFromLegacy(1, 'veg', false, false);
   return {
     full_name: String(profile?.full_name || '').trim(),
     last_name: String(profile?.last_name || '').trim(),
     email: String(profile?.email || '').trim(),
-    phone_number: phone,
+    phone_number: row?.phone_number || profile?.phone_number || '',
     batch: typeof profile?.batch === 'number' ? profile.batch : undefined,
     section: String(profile?.section || '').trim(),
     city: loc.city,
     country: loc.country,
-    number_of_guests: guests.length,
-    food_preference: choices?.food_preference ?? 'veg',
-    parking_needed: choices?.parking_needed ?? 'none',
-    lunch: choices?.lunch ?? false,
-    dinner: choices?.dinner ?? false,
-    attending: choices?.attending ?? true,
-    guests,
-    payment_status: choices?.payment_status,
+    attending: row?.attending ?? true,
+    self_lunch: row?.self_lunch ?? true,
+    self_preference: normalizeFoodPreference(row?.self_preference),
+    guests: guestsFromUnknown(row?.guests),
+    payment_status: row?.payment_status,
     amount_paid_paise: Math.max(0, Number(row?.amount_paid_paise) || 0),
     amount_due_paise: Math.max(0, Number(row?.amount_due_paise) || 0),
     total_cost_paise: Math.max(0, Number(row?.total_cost_paise) || 0),

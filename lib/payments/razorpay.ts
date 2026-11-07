@@ -29,6 +29,11 @@ export function isRazorpayConfigured(): boolean {
   const id = keyId();
   const secret = keySecret();
   const pub = publicKeyId();
+  console.log({
+  id,
+  secret: secret ? '[PRESENT]' : '[MISSING]',
+  pub
+});
   return Boolean(
     id &&
       secret &&

@@ -1,12 +1,19 @@
+// app/api/registrations/[id]/route.ts
+// Admin toggles a registration between paid (settles in full) and pending (clears payment).
+
 import { NextResponse } from 'next/server';
 import { requireVerifiedAdmin } from '@/lib/auth/admin-guard';
 import { applyRegistrationPayment, markRegistrationUnpaid } from '@/lib/events/mark-paid';
+
+type PatchBody = {
+  payment_status?: unknown;
+};
 
 export async function PATCH(request: Request, ctx: { params: { id: string } }) {
   const me = await requireVerifiedAdmin();
   if (!me) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-  const body = await request.json().catch(() => ({}));
+  const body = (await request.json().catch(() => ({}))) as PatchBody;
   const status = String(body.payment_status || '');
   if (status !== 'paid' && status !== 'pending') {
     return NextResponse.json({ error: 'payment_status must be paid or pending' }, { status: 400 });

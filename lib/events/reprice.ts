@@ -1,12 +1,10 @@
-import {
-  jubileeStatusFromPayment,
-  OPEN_PAYMENT_STATUSES,
-} from '@/lib/events/balance';
+// lib/events/reprice.ts
+// Rewrites open registrations for one event from the current fee rule. Paid amounts stay.
+
+import { OPEN_PAYMENT_STATUSES, jubileeStatusFromPayment } from '@/lib/events/balance';
 import { selectCatalog } from '@/lib/events/catalog-select';
-import { eventToPricing } from '@/lib/events/pricing';
-import { type EventCatalog } from '@/lib/events/types';
+import type { EventCatalog } from '@/lib/events/types';
 import { repriceRegistration } from '@/lib/events/reprice-math';
-import type { GuestChoice } from '@/lib/registration';
 import { createAdminClient } from '@/lib/supabase-admin';
 
 export { repriceRegistration } from '@/lib/events/reprice-math';
@@ -14,12 +12,9 @@ export { repriceRegistration } from '@/lib/events/reprice-math';
 type StoredReg = {
   id: string;
   account_id: string;
-  number_of_guests: number;
-  lunch: boolean;
-  dinner: boolean;
-  parking_needed: string;
-  food_preference?: string | null;
-  guests?: GuestChoice[] | null;
+  attending: boolean;
+  self_lunch: boolean;
+  guests?: unknown;
   amount_paid_paise?: number | null;
   total_cost_paise: number;
   payment_status: string;
@@ -29,7 +24,7 @@ type StoredReg = {
     | null;
 };
 
-/** Rewrite open registrations for one event from its current catalog rates. Paid amounts stay. */
+/** Rewrite open registrations for one event from the current fee rule. Paid amounts stay. */
 export async function repriceEventRegistrations(eventId: string): Promise<number> {
   const id = String(eventId || '').trim();
   if (!id) return 0;
@@ -40,11 +35,10 @@ export async function repriceEventRegistrations(eventId: string): Promise<number
   if (error || !event) return 0;
 
   const catalog = event as unknown as EventCatalog;
-  const pricing = eventToPricing(catalog);
   const { data: rows, error: regError } = await admin
     .from('event_registrations')
     .select(
-      'id,account_id,number_of_guests,food_preference,lunch,dinner,guests,parking_needed,amount_paid_paise,total_cost_paise,payment_status,alumni_accounts(batch)'
+      'id,account_id,attending,self_lunch,guests,amount_paid_paise,total_cost_paise,payment_status,alumni_accounts(batch)'
     )
     .eq('event_id', id)
     .in('payment_status', [...OPEN_PAYMENT_STATUSES]);
@@ -63,7 +57,13 @@ export async function repriceEventRegistrations(eventId: string): Promise<number
         : batchRaw != null && String(batchRaw).trim() !== ''
           ? Number(batchRaw) || null
           : null;
-    const next = repriceRegistration(pricing, { ...row, batch });
+    const next = repriceRegistration({
+      attending: row.attending,
+      self_lunch: row.self_lunch,
+      guests: row.guests,
+      batch,
+      amount_paid_paise: row.amount_paid_paise,
+    });
     if (next.total_cost_paise === row.total_cost_paise && next.payment_status === row.payment_status) {
       continue;
     }

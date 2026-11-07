@@ -1,20 +1,19 @@
+// components/member-venue-pass.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import RegistrationQr from '@/components/registration-qr';
-import { formatCostForDisplay, type GuestChoice } from '@/lib/registration';
+import { formatCostForDisplay } from '@/lib/registration/registration';
 import { registrationPath } from '@/lib/events/choose-event';
 import { venuePassSummary } from '@/lib/events/venue-pass';
 import type { EventCatalog } from '@/lib/events/types';
 
 type Registration = {
-  number_of_guests: number;
-  lunch: boolean;
-  dinner: boolean;
-  parking_needed: string;
-  food_preference: string | null;
-  guests?: GuestChoice[] | null;
+  attending: boolean;
+  self_lunch: boolean;
+  self_preference: string | null;
+  guests?: unknown;
   payment_status: string;
   amount_due_paise?: number;
   registration_code?: string | null;
@@ -27,6 +26,13 @@ type Loaded = {
   venue: string;
   name: string;
   registration: Registration;
+};
+
+type MeResponse = { role?: string };
+
+type RegistrationEventResponse = {
+  registration?: Registration | null;
+  profile?: { full_name?: string | null } | null;
 };
 
 function whenLabel(starts: string, ends?: string | null): string {
@@ -57,7 +63,7 @@ export default function MemberVenuePass({ mode = 'full' }: { mode?: 'full' | 'pa
           setPhase('hidden');
           return;
         }
-        const me = await meRes.json();
+        const me = (await meRes.json()) as MeResponse;
         if (me.role === 'admin') {
           setPhase('hidden');
           return;
@@ -82,7 +88,7 @@ export default function MemberVenuePass({ mode = 'full' }: { mode?: 'full' | 'pa
             return;
           }
           if (!regRes.ok || !active) continue;
-          const payload = await regRes.json();
+          const payload = (await regRes.json()) as RegistrationEventResponse;
           if (!payload.registration) continue;
           loaded.push({
             eventId: event.id,
@@ -90,7 +96,7 @@ export default function MemberVenuePass({ mode = 'full' }: { mode?: 'full' | 'pa
             when: whenLabel(event.starts_at, event.ends_at),
             venue: event.venue || '',
             name: String(payload.profile?.full_name || ''),
-            registration: payload.registration as Registration,
+            registration: payload.registration,
           });
         }
         if (!active) return;
@@ -137,14 +143,17 @@ export default function MemberVenuePass({ mode = 'full' }: { mode?: 'full' | 'pa
     <div id="venue-pass" className={`space-y-4 scroll-mt-28 ${passOnly ? '' : 'mb-6'}`}>
       {passes.map((pass) => {
         const summary = venuePassSummary({
-          ...pass.registration,
+          attending: pass.registration.attending !== false,
+          self_lunch: pass.registration.self_lunch !== false,
+          self_preference: pass.registration.self_preference,
+          guests: pass.registration.guests,
+          payment_status: pass.registration.payment_status,
           amount_due_paise: Math.max(0, Number(pass.registration.amount_due_paise) || 0),
+          registration_code: pass.registration.registration_code,
         });
-        const facts = [
+        const facts: Array<[string, string]> = [
           ['People', String(summary.people)],
-          ['Food', summary.food],
-          ['Meals', summary.meals],
-          ['Parking', summary.parking],
+          ['Lunch', summary.meals],
         ];
         return (
           <section
@@ -161,7 +170,9 @@ export default function MemberVenuePass({ mode = 'full' }: { mode?: 'full' | 'pa
                   summary.paid ? 'bg-secondary-container text-on-secondary-fixed' : 'bg-error-container text-error'
                 }`}
               >
-                {summary.paid ? 'Paid' : `Due ${formatCostForDisplay(pass.registration.amount_due_paise || 0)}`}
+                {summary.paid
+                  ? 'Paid'
+                  : `Due ${formatCostForDisplay(pass.registration.amount_due_paise || 0)}`}
               </p>
             </div>
             <h2 className="text-headline-sm text-primary mt-3">{pass.eventTitle}</h2>
@@ -208,9 +219,7 @@ export default function MemberVenuePass({ mode = 'full' }: { mode?: 'full' | 'pa
                 Your registration ID will appear here once it is issued.
               </p>
             ) : (
-              <p className="mt-5 text-body-sm text-error">
-                Complete payment to unlock your entry pass QR.
-              </p>
+              <p className="mt-5 text-body-sm text-error">Complete payment to unlock your entry pass QR.</p>
             )}
 
             {!passOnly && (

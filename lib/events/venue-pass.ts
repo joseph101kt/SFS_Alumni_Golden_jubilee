@@ -1,65 +1,38 @@
-import {
-  formatGuestMealCounts,
-  guestMealCounts,
-  guestsFromLegacy,
-  legacySummaryFromGuests,
-  normalizeGuests,
-  partySize,
-  type GuestChoice,
-} from '../registration';
+// lib/events/venue-pass.ts
+// Summary shown on a venue pass or at the gate. The alumnus counts only when attending.
+
+import { guestsFromUnknown } from '../registration/registration';
+import { formatMealCounts, mealCounts } from '../registration/meal-summary';
 
 export type VenuePassInput = {
-  number_of_guests: number;
-  lunch: boolean;
-  dinner: boolean;
-  parking_needed: string;
-  food_preference: string | null;
+  attending: boolean;
+  self_lunch: boolean;
+  self_preference: unknown;
+  guests: unknown;
   payment_status: string;
   amount_due_paise: number;
   registration_code?: string | null;
-  guests?: GuestChoice[] | null;
 };
 
 export type VenuePassSummary = {
   people: number;
   meals: string;
-  parking: string;
-  food: string;
   paid: boolean;
   code: string | null;
 };
 
-function resolveGuests(reg: VenuePassInput): GuestChoice[] {
-  const people = partySize(Number(reg.number_of_guests));
-  if (Array.isArray(reg.guests) && reg.guests.length > 0) {
-    return normalizeGuests(reg.guests, people);
-  }
-  return guestsFromLegacy(people, reg.food_preference, Boolean(reg.lunch), Boolean(reg.dinner));
-}
-
 export function venuePassSummary(reg: VenuePassInput): VenuePassSummary {
-  const guests = resolveGuests(reg);
-  const counts = guestMealCounts(guests);
-  const summary = legacySummaryFromGuests(guests);
-  const parking =
-    reg.parking_needed === '2-wheeler'
-      ? '2-wheeler'
-      : reg.parking_needed === '4-wheeler'
-        ? '4-wheeler'
-        : 'No vehicle';
-  const food =
-    summary.food_preference === 'mixed'
-      ? 'Mixed'
-      : summary.food_preference === 'non-veg'
-        ? 'Non-veg'
-        : summary.food_preference === 'none'
-          ? 'No food'
-          : 'Veg';
+  const guests = guestsFromUnknown(reg.guests);
+  const people = (reg.attending ? 1 : 0) + guests.length;
+  const counts = mealCounts({
+    attending: reg.attending,
+    selfLunch: reg.self_lunch,
+    selfPreference: reg.self_preference,
+    guests,
+  });
   return {
-    people: counts.people,
-    meals: formatGuestMealCounts(counts),
-    parking,
-    food,
+    people,
+    meals: formatMealCounts(counts),
     paid: reg.payment_status === 'paid' && Math.max(0, Number(reg.amount_due_paise) || 0) === 0,
     code: reg.registration_code || null,
   };

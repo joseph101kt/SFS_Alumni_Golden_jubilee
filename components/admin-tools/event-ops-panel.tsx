@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { formatCostForDisplay } from '@/lib/registration';
+import { formatCostForDisplay } from '@/lib/registration/registration';
 import type { EventCatalog } from '@/lib/events/types';
 
 type Totals = {

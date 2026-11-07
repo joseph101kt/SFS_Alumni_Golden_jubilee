@@ -27,6 +27,7 @@ Run in SQL Editor, **filename order**:
 21. `20261101_event_fee_batch_range.sql`
 22. `20261101_event_refund_email.sql`
 23. `20261101_push_and_broadcasts.sql`
+24. `20261107_registration_self_lunch.sql`
 
 ## 2. Data — `02_data/`
 

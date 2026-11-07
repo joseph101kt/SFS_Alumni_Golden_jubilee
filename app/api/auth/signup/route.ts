@@ -4,7 +4,7 @@ import { hashPassword } from '@/lib/auth/password';
 import { COOKIE_NAME, createSessionToken, sessionCookieOptions } from '@/lib/auth/session';
 import { isPublicEmail, normalizeEmail } from '@/lib/email';
 import { phoneValidationError, toE164 } from '@/lib/phone';
-import { packProfileFields, readPackedProfile } from '@/lib/registration-fields';
+import { packProfileFields, readPackedProfile } from '@/lib/registration/registration-fields';
 import { createAdminClient } from '@/lib/supabase-admin';
 
 function missingColumn(error: { code?: string; message?: string } | null): boolean {

@@ -1,11 +1,11 @@
+// app/events/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import MemberGate from '@/components/member-gate';
 import PortalShell from '@/components/portal-shell';
-import { registrationFeeLabel } from '@/lib/events/fee-label';
-import { mealPriceSummary } from '@/lib/events/pricing';
+import { eventFeeSummary } from '@/lib/events/pricing';
 import type { EventCatalog } from '@/lib/events/types';
 
 export default function EventsPage() {
@@ -62,15 +62,7 @@ export default function EventsPage() {
               {e.venue && (
                 <p className="text-label-sm text-on-surface-variant mt-3">Venue: {e.venue}</p>
               )}
-              <p className="text-label-sm text-navy-subtle mt-3">
-                {mealPriceSummary(e)} · 2-wheeler ₹
-                {(e.parking_2w_paise / 100).toFixed(0)} · 4-wheeler ₹
-                {(e.parking_4w_paise / 100).toFixed(0)}
-                {(() => {
-                  const label = registrationFeeLabel(e);
-                  return label ? ` · ${label}` : '';
-                })()}
-              </p>
+              <p className="text-label-sm text-navy-subtle mt-3">{eventFeeSummary()}</p>
               <Link
                 href={`/registration?event=${e.id}`}
                 className="inline-flex mt-5 rounded-lg bg-secondary-container text-on-secondary-container hover:bg-secondary-fixed px-4 py-2.5 text-label-sm font-bold"

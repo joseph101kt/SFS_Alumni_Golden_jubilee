@@ -1,18 +1,16 @@
+// lib/gate/lookup.ts
+// Looks up a registration by its ID for gate check-in. Parking is no longer part of the event.
+
 import { amountDuePaise } from '@/lib/events/balance';
-import {
-  formatGuestMealCounts,
-  guestMealCounts,
-  guestsFromLegacy,
-  normalizeGuests,
-} from '@/lib/registration';
 import {
   issueMissingPaidCodes,
   missingColumn,
   normalizeRegistrationCode,
   type RegistrationCodeAdmin,
 } from '@/lib/events/registration-code';
-import { createAdminClient } from '@/lib/supabase-admin';
 import { venuePassSummary } from '@/lib/events/venue-pass';
+import { guestsFromUnknown } from '@/lib/registration/registration';
+import { createAdminClient } from '@/lib/supabase-admin';
 
 export type GateLookupResult =
   | { ok: true; registration: GateRegistration }
@@ -22,9 +20,10 @@ export type GateRegistration = {
   id: string;
   registration_code: string;
   full_name: string;
-  number_of_guests: number;
+  attending: boolean;
+  guest_count: number;
+  people: number;
   meals: string;
-  parking: string;
   event_title: string;
   payment_status: string;
   amount_paid_paise: number;
@@ -46,9 +45,9 @@ export async function lookupByCode(rawCode: string): Promise<GateLookupResult> {
   await issueMissingPaidCodes(admin as unknown as RegistrationCodeAdmin);
 
   const selectWithCheckIn =
-    'id,registration_code,number_of_guests,food_preference,lunch,dinner,guests,parking_needed,payment_status,total_cost_paise,amount_paid_paise,checked_in_at,event_catalog(title),alumni_accounts(full_name)';
+    'id,registration_code,attending,self_lunch,self_preference,guests,payment_status,total_cost_paise,amount_paid_paise,checked_in_at,event_catalog(title),alumni_accounts(full_name)';
   const selectBase =
-    'id,registration_code,number_of_guests,food_preference,lunch,dinner,guests,parking_needed,payment_status,total_cost_paise,amount_paid_paise,event_catalog(title),alumni_accounts(full_name)';
+    'id,registration_code,attending,self_lunch,self_preference,guests,payment_status,total_cost_paise,amount_paid_paise,event_catalog(title),alumni_accounts(full_name)';
 
   let data: Record<string, unknown> | null = null;
   let error: { message?: string; code?: string } | null = null;
@@ -84,29 +83,22 @@ export async function lookupByCode(rawCode: string): Promise<GateLookupResult> {
 
   const amount_paid_paise = Math.max(0, Number(data.amount_paid_paise) || 0);
   const total_cost_paise = Math.max(0, Number(data.total_cost_paise) || 0);
-  const guests =
-    Array.isArray(data.guests) && data.guests.length > 0
-      ? normalizeGuests(data.guests, Number(data.number_of_guests) || 1)
-      : guestsFromLegacy(
-          Number(data.number_of_guests) || 1,
-          (data.food_preference as string | null) || null,
-          Boolean(data.lunch),
-          Boolean(data.dinner)
-        );
-  const account = one(data.alumni_accounts as { full_name: string } | { full_name: string }[] | null);
-  const event = one(data.event_catalog as { title: string } | { title: string }[] | null);
   const due = amountDuePaise(total_cost_paise, amount_paid_paise);
   const payment_status = String(data.payment_status || '');
+  const attending = data.attending !== false;
+  const guests = guestsFromUnknown(data.guests);
+
+  const account = one(data.alumni_accounts as { full_name: string } | { full_name: string }[] | null);
+  const event = one(data.event_catalog as { title: string } | { title: string }[] | null);
+
   const summary = venuePassSummary({
-    number_of_guests: Number(data.number_of_guests) || 1,
-    lunch: Boolean(data.lunch),
-    dinner: Boolean(data.dinner),
-    parking_needed: String(data.parking_needed || 'none'),
-    food_preference: (data.food_preference as string | null) || null,
+    attending,
+    self_lunch: data.self_lunch !== false,
+    self_preference: data.self_preference,
+    guests: data.guests,
     payment_status,
     amount_due_paise: due,
     registration_code: String(data.registration_code || code),
-    guests,
   });
 
   return {
@@ -115,14 +107,15 @@ export async function lookupByCode(rawCode: string): Promise<GateLookupResult> {
       id: String(data.id),
       registration_code: String(data.registration_code || code),
       full_name: account?.full_name || '—',
-      number_of_guests: Number(data.number_of_guests) || 1,
-      meals: formatGuestMealCounts(guestMealCounts(guests)),
-      parking: summary.parking,
+      attending,
+      guest_count: guests.length,
+      people: summary.people,
+      meals: summary.meals,
       event_title: event?.title || 'Event',
       payment_status,
       amount_paid_paise,
       amount_due_paise: due,
-      paid: payment_status === 'paid' && due === 0,
+      paid: summary.paid,
       checked_in_at: data.checked_in_at ? String(data.checked_in_at) : null,
     },
   };

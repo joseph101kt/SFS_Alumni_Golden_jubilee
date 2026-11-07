@@ -1,3 +1,7 @@
+// lib/events/register.ts
+// Reads and saves one account's registration for one event. The fee comes only from
+// getEventCostBreakdown in lib/registration/registration, so this file never sets prices.
+
 import type { AlumniAccount } from '@/lib/auth/request';
 import {
   OPEN_PAYMENT_STATUSES,
@@ -6,33 +10,32 @@ import {
   statusFromAmounts,
 } from '@/lib/events/balance';
 import { selectCatalog } from '@/lib/events/catalog-select';
-import { type EventCatalog } from '@/lib/events/types';
-import { clampGuestMealsToPricing, eventToPricing } from '@/lib/events/pricing';
+import type { EventCatalog } from '@/lib/events/types';
 import type { ExistingRegistrationRow } from '@/lib/events/existing-registration';
 import {
-  calculateEventRegistrationCost,
-  guestsFromLegacy,
-  legacySummaryFromGuests,
-  normalizeGuests,
-  partySize,
-  validateRegistrationCost,
-  type CostCalculationInput,
-  type ParkingNeeded,
-} from '@/lib/registration';
+  MAX_GUESTS,
+  getEventCostBreakdown,
+  guestsFromUnknown,
+  normalizeFoodPreference,
+} from '@/lib/registration/registration';
 import {
   formatLocation,
   isValidBatch,
   isValidSection,
   mergeProfilePack,
   readPackedProfile,
-} from '@/lib/registration-fields';
+} from '@/lib/registration/registration-fields';
 import { repriceEventRegistrations } from '@/lib/events/reprice';
-import { readRegistrationCode, type RegistrationCodeAdmin } from '@/lib/events/registration-code';
+import {
+  ensureRegistrationCode,
+  readRegistrationCode,
+  type RegistrationCodeAdmin,
+} from '@/lib/events/registration-code';
 import { normalizePhoneNumber, phoneValidationError, splitE164 } from '@/lib/phone';
 import { createAdminClient } from '@/lib/supabase-admin';
 
 const REG_SELECT =
-  'id,event_id,number_of_guests,food_preference,parking_needed,lunch,dinner,guests,attending,phone_number,payment_status,total_cost_paise,amount_paid_paise';
+  'id,event_id,number_of_guests,attending,self_lunch,self_preference,guests,phone_number,payment_status,total_cost_paise,amount_paid_paise';
 
 function profilePayload(me: AlumniAccount) {
   return {
@@ -81,8 +84,7 @@ export async function getAccountRegistrationForEvent(
     return {
       status: 500,
       payload: {
-        error:
-          error.message || 'Could not load registration. Apply the event_registrations migration.',
+        error: error.message || 'Could not load registration. Apply the event_registrations migration.',
       },
     };
   }
@@ -100,8 +102,8 @@ export async function getAccountRegistrationForEvent(
     if (!refreshed.error && refreshed.data) registrationRow = refreshed.data;
   }
 
-  // Always start from session account (already unpacks bio → section/last_name).
-  // Overlay DB row; never let a sparse DB profile wipe packed section/last_name.
+  // Always start from the session account (already unpacks bio → section/last_name).
+  // Overlay the DB row; never let a sparse DB profile wipe packed section/last_name.
   let profile: Record<string, unknown> = profilePayload(me);
   const fullProfile = await admin
     .from('alumni_accounts')
@@ -187,41 +189,34 @@ export async function registerAccountForEvent(
   }
 
   const catalog = event as unknown as EventCatalog;
-  const parkingNeeded = (['none', '2-wheeler', '4-wheeler'].includes(String(body.parking_needed))
-    ? String(body.parking_needed)
-    : 'none') as ParkingNeeded;
-  const peopleHint = partySize(Number(body.number_of_guests));
-  const pricing = eventToPricing(catalog);
-  const guests = clampGuestMealsToPricing(
-    pricing,
-    Array.isArray(body.guests) && body.guests.length > 0
-      ? normalizeGuests(body.guests, peopleHint)
-      : guestsFromLegacy(peopleHint, body.food_preference, Boolean(body.lunch), Boolean(body.dinner))
-  );
-  const summary = legacySummaryFromGuests(guests);
-  const batchRawForFee = body.batch != null && body.batch !== '' ? Number(body.batch) : null;
-  const batchForFee = isValidBatch(batchRawForFee) ? batchRawForFee : me.batch;
-  const input = {
-    guests,
-    parkingNeeded,
-    batch: batchForFee,
-  } satisfies CostCalculationInput;
-  if (!validateRegistrationCost(pricing, input)) {
+
+  const attending = body.attending !== false;
+  const selfLunch = body.self_lunch !== false;
+  const selfPreference = normalizeFoodPreference(body.self_preference);
+
+  // Guests are always veg or non-veg and always eat lunch. The list length is the guest count.
+  const guests = guestsFromUnknown(body.guests);
+  if (guests.length > MAX_GUESTS) {
     return {
       status: 400,
-      payload: {
-        error:
-          'Select lunch, dinner, or parking — or ensure your batch has a registration fee for this event',
-      },
+      payload: { error: `You can register up to ${MAX_GUESTS} guests` },
     };
   }
 
-  const total = calculateEventRegistrationCost(pricing, input);
+  const feeBatchRaw = body.batch != null && body.batch !== '' ? Number(body.batch) : null;
+  const feeBatch = isValidBatch(feeBatchRaw) ? feeBatchRaw : me.batch;
+
+  const breakdown = getEventCostBreakdown({
+    attending,
+    selfLunch,
+    batch: feeBatch ?? null,
+    guestCount: guests.length,
+  });
+  const total = breakdown.totalCost;
 
   const rawPhone = body.phone_number ? String(body.phone_number) : me.phone_number || '';
   const phone =
-    normalizePhoneNumber(rawPhone.startsWith('+') ? rawPhone : rawPhone ? `+${rawPhone}` : '') ||
-    null;
+    normalizePhoneNumber(rawPhone.startsWith('+') ? rawPhone : rawPhone ? `+${rawPhone}` : '') || null;
   if (!phone) {
     return {
       status: 400,
@@ -251,12 +246,10 @@ export async function registerAccountForEvent(
     account_id: me.id,
     phone_number: phone,
     number_of_guests: guests.length,
-    food_preference: summary.food_preference,
-    parking_needed: input.parkingNeeded,
-    lunch: summary.lunch,
-    dinner: summary.dinner,
+    attending,
+    self_lunch: selfLunch,
+    self_preference: selfPreference,
     guests,
-    attending: body.attending !== false,
     total_cost_paise: total,
     amount_paid_paise: priorPaid,
     payment_status,
@@ -268,7 +261,10 @@ export async function registerAccountForEvent(
     const { error } = await admin.from('event_registrations').update(row).eq('id', existing.id);
     if (error) {
       console.error('reg update', error);
-      return { status: 500, payload: { error: 'Could not update registration' } };
+      return {
+        status: 500,
+        payload: { error: error.message || 'Could not update registration' },
+      };
     }
   } else {
     const { data: inserted, error } = await admin
@@ -281,12 +277,22 @@ export async function registerAccountForEvent(
       return {
         status: 500,
         payload: {
-          error:
-            error.message || 'Could not save registration. Apply the event_registrations migration.',
+          error: error.message || 'Could not save registration. Apply the event_registrations migration.',
         },
       };
     }
     regId = inserted.id;
+  }
+
+  // A registration that is paid in full (including a ₹0 total) gets its QR code now.
+  // Not-attending registrations are confirmed but get no QR.
+  let registration_code: string | null = null;
+  if (payment_status === 'paid' && attending && regId) {
+    registration_code = await ensureRegistrationCode(
+      admin as unknown as RegistrationCodeAdmin,
+      regId,
+      payment_status
+    );
   }
 
   const fullName = String(body.full_name || '').trim() || me.full_name;
@@ -308,22 +314,16 @@ export async function registerAccountForEvent(
   };
   if (jubilee) corePatch.jubilee_reg_status = jubilee;
 
-  const { error: coreError } = await admin
-    .from('alumni_accounts')
-    .update(corePatch)
-    .eq('id', me.id);
+  const { error: coreError } = await admin.from('alumni_accounts').update(corePatch).eq('id', me.id);
   if (coreError) console.error('reg account core update', coreError);
 
-  // Prefer real columns when migration is applied; always also pack into bio so
+  // Prefer real columns when the migration is applied; always also pack into bio so
   // Complete payment works before last_name/section exist on alumni_accounts.
   if (lastName || section) {
     const extra: Record<string, unknown> = {};
     if (lastName) extra.last_name = lastName;
     if (section) extra.section = section;
-    const { error: extraError } = await admin
-      .from('alumni_accounts')
-      .update(extra)
-      .eq('id', me.id);
+    const { error: extraError } = await admin.from('alumni_accounts').update(extra).eq('id', me.id);
     if (extraError) {
       console.error('reg account section/last_name columns', extraError.message);
     }
@@ -354,6 +354,7 @@ export async function registerAccountForEvent(
       amount_paid_paise: priorPaid,
       amount_due_paise,
       jubilee_reg_status: jubilee,
+      registration_code,
     },
   };
 }

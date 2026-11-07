@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { COOKIE_NAME, verifySessionToken, type SessionPayload } from '@/lib/auth/session';
-import { readPackedProfile } from '@/lib/registration-fields';
+import { readPackedProfile } from '@/lib/registration/registration-fields';
 import { createAdminClient } from '@/lib/supabase-admin';
 
 import type { JubileeRegStatus } from '@/lib/jubilee-cta';

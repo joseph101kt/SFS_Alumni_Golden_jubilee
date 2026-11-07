@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from 'react';
 import AdminShell from '@/components/admin-shell';
-import { formatCostForDisplay } from '@/lib/registration';
+import { formatCostForDisplay } from '@/lib/registration/registration';
 
 type Hit = {
   registration_code: string;

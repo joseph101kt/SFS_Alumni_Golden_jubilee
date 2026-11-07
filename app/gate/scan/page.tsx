@@ -4,7 +4,7 @@ import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import GateQrScanner from '@/components/gate-qr-scanner';
-import { formatCostForDisplay } from '@/lib/registration';
+import { formatCostForDisplay } from '@/lib/registration/registration';
 
 type Hit = {
   id: string;

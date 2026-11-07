@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { normalizeLoginId } from '@/lib/auth/identity';
 import { verifyPassword } from '@/lib/auth/password';
 import { COOKIE_NAME, createSessionToken, sessionCookieOptions } from '@/lib/auth/session';
-import { readPackedProfile } from '@/lib/registration-fields';
+import { readPackedProfile } from '@/lib/registration/registration-fields';
 import { createAdminClient } from '@/lib/supabase-admin';
 
 function missingColumn(error: { code?: string; message?: string } | null): boolean {

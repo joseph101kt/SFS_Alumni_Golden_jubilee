@@ -1,39 +1,26 @@
-import { amountDuePaise, statusFromAmounts } from './balance';
-import {
-  calculateEventRegistrationCost,
-  guestsFromLegacy,
-  normalizeGuests,
-  partySize,
-  type EventPricing,
-  type GuestChoice,
-  type ParkingNeeded,
-} from '../registration';
+// lib/events/reprice-math.ts
+// Pure recalculation of one registration's total and status. No database access.
 
-type RepriceRow = {
-  number_of_guests: number;
-  lunch: boolean;
-  dinner: boolean;
-  parking_needed: string;
-  food_preference?: string | null;
-  guests?: GuestChoice[] | null;
-  amount_paid_paise?: number | null;
+import { amountDuePaise, statusFromAmounts } from './balance';
+import { getEventCostBreakdown, guestsFromUnknown } from '../registration/registration';
+
+export type RepriceRow = {
+  attending: boolean;
+  self_lunch: boolean;
+  guests: unknown;
   batch?: number | null;
+  amount_paid_paise?: number | null;
 };
 
-export function repriceRegistration(pricing: EventPricing, row: RepriceRow) {
-  const parkingNeeded = (
-    ['none', '2-wheeler', '4-wheeler'].includes(row.parking_needed) ? row.parking_needed : 'none'
-  ) as ParkingNeeded;
-  const people = partySize(Number(row.number_of_guests));
-  const guests =
-    Array.isArray(row.guests) && row.guests.length > 0
-      ? normalizeGuests(row.guests, people)
-      : guestsFromLegacy(people, row.food_preference, Boolean(row.lunch), Boolean(row.dinner));
-  const total_cost_paise = calculateEventRegistrationCost(pricing, {
-    guests,
-    parkingNeeded,
+export function repriceRegistration(row: RepriceRow) {
+  const guestCount = guestsFromUnknown(row.guests).length;
+  const { totalCost } = getEventCostBreakdown({
+    attending: row.attending,
+    selfLunch: row.self_lunch,
     batch: row.batch ?? null,
+    guestCount,
   });
+  const total_cost_paise = totalCost;
   const amount_paid_paise = Math.max(0, Math.floor(Number(row.amount_paid_paise) || 0));
   const payment_status = statusFromAmounts(total_cost_paise, amount_paid_paise);
   return {

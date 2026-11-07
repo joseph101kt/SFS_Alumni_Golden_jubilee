@@ -1,4 +1,4 @@
-import { readPackedProfile } from '@/lib/registration-fields';
+import { readPackedProfile } from '@/lib/registration/registration-fields';
 import { createAdminClient } from '@/lib/supabase-admin';
 
 function missingColumn(error: { code?: string; message?: string } | null): boolean {

@@ -4,7 +4,7 @@ import {
   normalizeRefundEmail,
   refundAmountPaise,
 } from '@/lib/events/refund-mailto';
-import { formatCostForDisplay } from '@/lib/registration';
+import { formatCostForDisplay } from '@/lib/registration/registration';
 
 export default function RefundEmailCta({
   refundEmail,

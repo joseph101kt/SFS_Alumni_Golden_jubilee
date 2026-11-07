@@ -1,8 +1,38 @@
+// app/api/registrations/route.ts
+// Admin list of event registrations with filters. Reprices and issues missing codes first.
+
 import { NextResponse } from 'next/server';
 import { requireVerifiedAdmin } from '@/lib/auth/admin-guard';
 import { issueMissingPaidCodes, missingColumn, type RegistrationCodeAdmin } from '@/lib/events/registration-code';
 import { repriceEventRegistrations } from '@/lib/events/reprice';
+import { guestsFromUnknown } from '@/lib/registration/registration';
+import { formatMealCounts, mealCounts } from '@/lib/registration/meal-summary';
 import { createAdminClient } from '@/lib/supabase-admin';
+
+const COLUMNS =
+  'id,event_id,account_id,phone_number,number_of_guests,attending,self_lunch,self_preference,guests,total_cost_paise,amount_paid_paise,payment_status,created_at,event_catalog(title),alumni_accounts(full_name,email,batch)';
+
+type RegistrationListRow = {
+  id: string;
+  event_id: string;
+  account_id: string;
+  phone_number: string | null;
+  number_of_guests: number;
+  attending: boolean;
+  self_lunch: boolean;
+  self_preference: string | null;
+  guests?: unknown;
+  total_cost_paise: number;
+  amount_paid_paise?: number;
+  payment_status: string;
+  registration_code?: string | null;
+  created_at: string;
+  event_catalog: { title: string } | { title: string }[] | null;
+  alumni_accounts:
+    | { full_name: string; email: string; batch?: number | null }
+    | { full_name: string; email: string; batch?: number | null }[]
+    | null;
+};
 
 export async function GET(request: Request) {
   const me = await requireVerifiedAdmin();
@@ -25,9 +55,6 @@ export async function GET(request: Request) {
 
   await issueMissingPaidCodes(admin as unknown as RegistrationCodeAdmin);
 
-  const columns =
-    'id,event_id,account_id,phone_number,number_of_guests,food_preference,parking_needed,lunch,dinner,guests,attending,total_cost_paise,amount_paid_paise,payment_status,created_at,event_catalog(title),alumni_accounts(full_name,email,batch)';
-
   function list(select: string) {
     let query = admin
       .from('event_registrations')
@@ -39,9 +66,9 @@ export async function GET(request: Request) {
     return query;
   }
 
-  let { data, error } = await list(`${columns},registration_code`);
+  let { data, error } = await list(`${COLUMNS},registration_code`);
   if (error && missingColumn(error)) {
-    ({ data, error } = await list(columns));
+    ({ data, error } = await list(COLUMNS));
   }
   if (error) {
     console.error('admin registrations', error);
@@ -51,31 +78,7 @@ export async function GET(request: Request) {
     );
   }
 
-  type Raw = {
-    id: string;
-    event_id: string;
-    account_id: string;
-    phone_number: string | null;
-    number_of_guests: number;
-    food_preference: string | null;
-    parking_needed: string;
-    lunch: boolean;
-    dinner: boolean;
-    guests?: unknown;
-    attending: boolean;
-    total_cost_paise: number;
-    amount_paid_paise?: number;
-    payment_status: string;
-    registration_code?: string | null;
-    created_at: string;
-    event_catalog: { title: string } | { title: string }[] | null;
-    alumni_accounts:
-      | { full_name: string; email: string; batch?: number | null }
-      | { full_name: string; email: string; batch?: number | null }[]
-      | null;
-  };
-
-  const rows = ((data || []) as unknown as Raw[])
+  const rows = ((data || []) as unknown as RegistrationListRow[])
     .map((r) => {
       const account = Array.isArray(r.alumni_accounts) ? r.alumni_accounts[0] : r.alumni_accounts;
       const event = Array.isArray(r.event_catalog) ? r.event_catalog[0] : r.event_catalog;
@@ -87,6 +90,15 @@ export async function GET(request: Request) {
           : batchRaw != null && String(batchRaw).trim() !== ''
             ? Number(batchRaw) || null
             : null;
+      const guests = guestsFromUnknown(r.guests);
+      const meals = formatMealCounts(
+        mealCounts({
+          attending: r.attending,
+          selfLunch: r.self_lunch,
+          selfPreference: r.self_preference,
+          guests,
+        })
+      );
       return {
         id: r.id,
         event_id: r.event_id,
@@ -96,13 +108,12 @@ export async function GET(request: Request) {
         email: account?.email || '—',
         batch,
         phone_number: r.phone_number,
-        number_of_guests: r.number_of_guests,
-        food_preference: r.food_preference,
-        parking_needed: r.parking_needed,
-        lunch: r.lunch,
-        dinner: r.dinner,
-        guests: r.guests ?? null,
         attending: r.attending,
+        self_lunch: r.self_lunch,
+        self_preference: r.self_preference,
+        number_of_guests: guests.length,
+        guests,
+        meals,
         total_cost_paise: r.total_cost_paise,
         amount_paid_paise,
         amount_due_paise: Math.max(0, r.total_cost_paise - amount_paid_paise),

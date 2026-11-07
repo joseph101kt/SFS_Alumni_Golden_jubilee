@@ -1,10 +1,10 @@
+// app/admin/events/page.tsx
 'use client';
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import AdminShell from '@/components/admin-shell';
-import { mealPriceSummary } from '@/lib/events/pricing';
-import { registrationFeeLabel } from '@/lib/events/fee-label';
+import { eventFeeSummary } from '@/lib/events/pricing';
 import type { EventCatalog } from '@/lib/events/types';
 
 export default function AdminEventsPage() {
@@ -69,15 +69,7 @@ export default function AdminEventsPage() {
                 {new Date(e.starts_at).toLocaleString('en-IN')}
                 {e.venue ? ` · ${e.venue}` : ''}
               </p>
-              <p className="text-label-sm text-navy-subtle mt-1">
-                {mealPriceSummary(e)} ·
-                2-wheeler ₹{(e.parking_2w_paise / 100).toFixed(0)} · 4-wheeler ₹
-                {(e.parking_4w_paise / 100).toFixed(0)}
-                {(() => {
-                  const label = registrationFeeLabel(e);
-                  return label ? ` · ${label}` : '';
-                })()}
-              </p>
+              <p className="text-label-sm text-navy-subtle mt-1">{eventFeeSummary()}</p>
             </div>
             <div className="flex gap-2">
               <Link
