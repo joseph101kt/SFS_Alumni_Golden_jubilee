@@ -94,81 +94,8 @@ export function RegistrationSuccess(props: RegistrationSuccessProps) {
                         <EventPushOptIn auto autoRequest />
                     </div>
 
-                    <p className="text-body-md text-on-surface-variant mb-6">
-                        {isConfirmed
-                            ? 'You’re confirmed. Add or remove guests below. If the total goes up, you only pay the difference.'
-                            : lastDue > 0
-                              ? 'Your details are saved. Complete the remaining balance when payment is available, or ask the committee to mark paid.'
-                              : 'Your registration has been updated.'}
-                    </p>
 
-                    <div className="mb-6 rounded-lg border border-outline-variant bg-surface px-4 py-3 text-left">
-                        <div className="flex items-center justify-between gap-3">
-                            <div>
-                                <div className="text-label-md text-primary uppercase tracking-wider">Guests</div>
-                                <p className="text-label-sm text-on-surface-variant mt-1">
-                                    Not including you. Maximum {MAX_GUESTS}.
-                                </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <button
-                                    type="button"
-                                    aria-label="Fewer guests"
-                                    disabled={busy || guestCount <= MIN_GUESTS}
-                                    onClick={() => changeGuestCount(guestCount - 1)}
-                                    className="h-12 w-12 rounded-lg border border-outline-variant text-headline-sm text-primary hover:bg-surface-container disabled:opacity-40 cursor-pointer"
-                                >
-                                    −
-                                </button>
-                                <span className="w-8 text-center text-headline-sm text-primary tabular-nums">{guestCount}</span>
-                                <button
-                                    type="button"
-                                    aria-label="More guests"
-                                    disabled={busy || guestCount >= MAX_GUESTS}
-                                    onClick={() => changeGuestCount(guestCount + 1)}
-                                    className="h-12 w-12 rounded-lg border border-outline-variant text-headline-sm text-primary hover:bg-surface-container disabled:opacity-40 cursor-pointer"
-                                >
-                                    +
-                                </button>
-                            </div>
-                        </div>
-                        {formDirty && (
-                            <p className="text-body-sm text-on-surface-variant mt-3">
-                                New total {formatCostForDisplay(totalCost)}.
-                                {liveDue > 0 ? ` Pay ${formatCostForDisplay(liveDue)} more.` : ' Nothing more to pay.'}
-                            </p>
-                        )}
-                        {priceDrift && !formDirty && (
-                            <p className="text-body-sm text-on-surface-variant mt-3">
-                                Event fee changed. New total {formatCostForDisplay(totalCost)}.
-                                {liveDue > 0 ? ` Pay ${formatCostForDisplay(liveDue)} more.` : ' Nothing more to pay.'}
-                            </p>
-                        )}
-                    </div>
 
-                    <div className="bg-surface-container-low rounded-lg p-6 mb-8 text-left space-y-2">
-                        <div className="flex justify-between text-body-sm">
-                            <span className="text-on-surface-variant">Total</span>
-                            <span className="tabular-nums">{formatCostForDisplay(totalCost)}</span>
-                        </div>
-                        <div className="flex justify-between text-body-sm">
-                            <span className="text-on-surface-variant">Paid</span>
-                            <span className="tabular-nums">{formatCostForDisplay(amountPaid)}</span>
-                        </div>
-                        <div className="flex justify-between items-baseline border-t border-outline-variant pt-2">
-                            <span className="text-label-md text-primary uppercase tracking-wider">Due</span>
-                            <span className="text-display-xl text-jubilee-gold-deep tabular-nums">{formatCostForDisplay(liveDue)}</span>
-                        </div>
-                        <p className="text-label-sm text-on-surface-variant">{costDetails}</p>
-                        <RefundEmailCta
-                            refundEmail={event?.refund_email}
-                            eventTitle={event?.title || 'Event'}
-                            fullName={formData.full_name}
-                            registrationCode={registrationCode}
-                            totalPaise={totalCost}
-                            paidPaise={amountPaid}
-                        />
-                    </div>
 
                     {error && (
                         <div role="alert" className="p-3 rounded-lg bg-error-container text-error text-body-sm mb-6 text-left">

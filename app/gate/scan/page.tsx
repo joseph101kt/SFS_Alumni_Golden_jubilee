@@ -10,9 +10,10 @@ type Hit = {
   id: string;
   registration_code: string;
   full_name: string;
-  number_of_guests: number;
+  attending: boolean;
+  guest_count: number;
+  people: number;
   meals: string;
-  parking: string;
   event_title: string;
   payment_status: string;
   amount_due_paise: number;
@@ -21,14 +22,23 @@ type Hit = {
   already_checked_in?: boolean;
 };
 
+type RecentCheckIn = {
+  registration_code: string | null;
+  full_name: string;
+  checked_in_at: string;
+  number_of_guests: number;
+};
+
 type Stats = {
   registration_count: number;
   people: number;
   checked_in_count: number;
   people_on_site: number;
   unpaid_count: number;
-  recent: { registration_code: string; full_name: string; checked_in_at: string; number_of_guests: number }[];
+  recent: RecentCheckIn[];
 };
+
+type GateMeResponse = { gate?: boolean };
 
 function beep(ok: boolean) {
   try {
@@ -64,7 +74,7 @@ export default function GateScanPage() {
   useEffect(() => {
     (async () => {
       const res = await fetch('/api/gate/me', { cache: 'no-store' });
-      const payload = await res.json().catch(() => ({}));
+      const payload = (await res.json().catch(() => ({}))) as GateMeResponse;
       if (!payload.gate) {
         router.replace('/gate');
         return;
@@ -82,16 +92,20 @@ export default function GateScanPage() {
     setPaused(true);
     try {
       const res = await fetch(`/api/gate/lookup?code=${encodeURIComponent(trimmed)}`);
-      const payload = await res.json().catch(() => ({}));
+      const payload = (await res.json().catch(() => ({}))) as Hit & { error?: string };
       if (!res.ok) {
         setHit(null);
         setMessage(payload.error || 'Lookup failed');
         beep(false);
         return;
       }
-      setHit(payload as Hit);
+      setHit(payload);
       setCode(payload.registration_code || trimmed);
       beep(Boolean(payload.paid));
+    } catch {
+      setHit(null);
+      setMessage('Could not reach the server. Check the connection and try again.');
+      beep(false);
     } finally {
       setBusy(false);
     }
@@ -107,15 +121,19 @@ export default function GateScanPage() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ code: hit.registration_code, action }),
       });
-      const payload = await res.json().catch(() => ({}));
+      const payload = (await res.json().catch(() => ({}))) as Hit & { error?: string };
       if (!res.ok) {
         setMessage(payload.error || 'Could not update check-in');
         beep(false);
         return;
       }
-      setHit(payload as Hit);
+      setHit(payload);
       if (payload.already_checked_in) {
-        setMessage(`Already checked in${payload.checked_in_at ? ` at ${new Date(payload.checked_in_at).toLocaleTimeString('en-IN')}` : ''}.`);
+        setMessage(
+          `Already checked in${
+            payload.checked_in_at ? ` at ${new Date(payload.checked_in_at).toLocaleTimeString('en-IN')}` : ''
+          }.`
+        );
       } else if (action === 'check_in') {
         setMessage('Checked in.');
         beep(true);
@@ -185,7 +203,7 @@ export default function GateScanPage() {
             <input
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              placeholder="SFS-4K7M2"
+              placeholder="Registration ID"
               autoCapitalize="characters"
               autoComplete="off"
               spellCheck={false}
@@ -230,16 +248,20 @@ export default function GateScanPage() {
               <dd className="text-primary text-right">{hit.event_title}</dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-on-surface-variant">People</dt>
-              <dd className="tabular-nums">{hit.number_of_guests}</dd>
+              <dt className="text-on-surface-variant">Attending</dt>
+              <dd>{hit.attending ? 'Yes' : 'No'}</dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-on-surface-variant">Meals</dt>
+              <dt className="text-on-surface-variant">Guests</dt>
+              <dd className="tabular-nums">{hit.guest_count}</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-on-surface-variant">People on site</dt>
+              <dd className="tabular-nums">{hit.people}</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-on-surface-variant">Lunch</dt>
               <dd className="text-right">{hit.meals}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-on-surface-variant">Parking</dt>
-              <dd>{hit.parking}</dd>
             </div>
           </dl>
 

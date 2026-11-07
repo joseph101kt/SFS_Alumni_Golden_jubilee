@@ -22,7 +22,16 @@ export default function GateQrScanner({ onCode, paused }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [error, setError] = useState('');
   const [live, setLive] = useState(false);
+  const [detectedValue, setDetectedValue] = useState<string | null>(null);
   const lastRef = useRef('');
+
+  // Clear detected state and last scanned reference when unpaused (e.g. Next guest)
+  useEffect(() => {
+    if (!paused) {
+      setDetectedValue(null);
+      lastRef.current = '';
+    }
+  }, [paused]);
 
   useEffect(() => {
     if (paused) return;
@@ -111,6 +120,7 @@ export default function GateQrScanner({ onCode, paused }: Props) {
 
           if (raw && raw !== lastRef.current) {
             lastRef.current = raw;
+            setDetectedValue(raw);
             onCode(raw);
           }
         } catch {
@@ -131,7 +141,7 @@ export default function GateQrScanner({ onCode, paused }: Props) {
   }, [onCode, paused]);
 
   return (
-    <div className="rounded-2xl overflow-hidden border border-primary/15 bg-black/90">
+    <div className="relative rounded-2xl overflow-hidden border border-primary/15 bg-black/90">
       <video
         ref={videoRef}
         className={`w-full aspect-[3/4] max-h-[420px] object-cover ${live ? '' : 'hidden'}`}
@@ -140,6 +150,24 @@ export default function GateQrScanner({ onCode, paused }: Props) {
         autoPlay
       />
       <canvas ref={canvasRef} className="hidden" aria-hidden />
+
+      {/* Visual Targeting Frame Overlay */}
+      {live && !paused && (
+        <div className="absolute inset-0 pointer-events-none flex items-center justify-center p-8">
+          <div className="w-48 h-48 border-2 border-dashed border-jubilee-gold-light/60 rounded-xl flex items-center justify-center">
+            <span className="text-[10px] tracking-widest text-white/50 uppercase">Align QR Code</span>
+          </div>
+        </div>
+      )}
+
+      {/* Scanned Badge Notification over camera */}
+      {detectedValue && (
+        <div className="absolute bottom-3 left-3 right-3 bg-primary/90 text-on-primary px-3 py-2 rounded-lg text-xs tracking-wider flex justify-between items-center backdrop-blur-sm animate-fade-in">
+          <span className="truncate">Scanned: {detectedValue}</span>
+          <span className="text-[10px] text-jubilee-gold-light uppercase font-bold">Processing</span>
+        </div>
+      )}
+
       {!live && (
         <div className="p-6 text-body-sm text-white/90">
           {error || 'Starting camera…'}
