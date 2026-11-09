@@ -1,6 +1,6 @@
 // components/registration_page/registration-payment-summary.tsx
-// Payment card shown below the donation block. Splits the registration fee from the
-// donation, and offers an approximate conversion to a chosen currency.
+// Payment card. Shows the saved amounts, or a live preview while the form has unsaved edits.
+// The figures are passed in; this component does no fee or donation calculation of its own.
 
 import type { ComponentProps } from 'react';
 import RefundEmailCta from '@/components/refund-email-cta';
@@ -11,54 +11,60 @@ import {
     type DisplayCurrency,
     type ExchangeRateState,
 } from '@/lib/registration/currency';
+import type { RegistrationMoney } from '@/lib/registration/types';
 
 type RefundEmail = ComponentProps<typeof RefundEmailCta>['refundEmail'];
 
 export interface PaymentSummaryProps {
-    registrationPaise: number;
-    donationPaise: number;
-    totalPaise: number;
-    amountPaidPaise: number;
-    duePaise: number;
-    costDetails: string;
+    /** Figures to show: saved amounts, or the live preview while the form has edits. */
+    money: RegistrationMoney;
+    isPreview: boolean;
     refundEmail: RefundEmail;
     eventTitle: string;
     fullName: string;
-    registrationCode: string | null;
     displayCurrency: DisplayCurrency;
     onCurrencyChange: (currency: DisplayCurrency) => void;
     exchange: ExchangeRateState;
 }
 
 export function PaymentSummary({
-    registrationPaise,
-    donationPaise,
-    totalPaise,
-    amountPaidPaise,
-    duePaise,
-    costDetails,
+    money,
+    isPreview,
     refundEmail,
     eventTitle,
     fullName,
-    registrationCode,
     displayCurrency,
     onCurrencyChange,
     exchange,
 }: PaymentSummaryProps) {
+    const donationPaid = money.donationPaymentStatus === 'paid';
+    const totalPaise = money.feeTotalPaise + money.donationIntendedPaise;
+    const alreadyPaidPaise = money.feePaidPaise + (donationPaid ? money.donationIntendedPaise : 0);
+    const duePaise = money.totalDuePaise;
+
     const approxTotal = approximateInCurrency(totalPaise, displayCurrency, exchange);
     const approxDue = approximateInCurrency(duePaise, displayCurrency, exchange);
 
     return (
         <section className="bg-surface-container-low rounded-lg px-6 py-6 space-y-3">
-            <h2 className="text-headline-sm text-primary uppercase tracking-wider">Payment summary</h2>
+            <div className="flex items-baseline justify-between gap-3">
+                <h2 className="text-headline-sm text-primary uppercase tracking-wider">Payment summary</h2>
+                <span className="text-label-sm text-on-surface-variant">
+                    {isPreview ? 'Preview: not saved yet' : 'Saved amounts'}
+                </span>
+            </div>
 
             <div className="flex justify-between items-center">
                 <span className="text-body-md text-on-surface-variant">Registration fee</span>
-                <span className="text-body-md text-on-surface tabular-nums">{formatCostForDisplay(registrationPaise)}</span>
+                <span className="text-body-md text-on-surface tabular-nums">{formatCostForDisplay(money.feeTotalPaise)}</span>
             </div>
             <div className="flex justify-between items-center">
-                <span className="text-body-md text-on-surface-variant">Donation</span>
-                <span className="text-body-md text-on-surface tabular-nums">{formatCostForDisplay(donationPaise)}</span>
+                <span className="text-body-md text-on-surface-variant">
+                    Donation{donationPaid ? ' (paid)' : ''}
+                </span>
+                <span className="text-body-md text-on-surface tabular-nums">
+                    {formatCostForDisplay(money.donationIntendedPaise)}
+                </span>
             </div>
             <div className="flex justify-between items-center border-t border-outline-variant pt-3">
                 <span className="text-body-md text-on-surface-variant">Total</span>
@@ -66,12 +72,18 @@ export function PaymentSummary({
             </div>
             <div className="flex justify-between items-center">
                 <span className="text-body-md text-on-surface-variant">Already paid</span>
-                <span className="text-body-md text-on-surface tabular-nums">{formatCostForDisplay(amountPaidPaise)}</span>
+                <span className="text-body-md text-on-surface tabular-nums">{formatCostForDisplay(alreadyPaidPaise)}</span>
             </div>
             <div className="flex justify-between items-center border-t border-outline-variant pt-3">
                 <span className="text-headline-sm text-primary">Due now</span>
                 <span className="text-headline-md text-jubilee-gold-deep tabular-nums">{formatCostForDisplay(duePaise)}</span>
             </div>
+
+            {isPreview && (
+                <p className="text-label-sm text-on-surface-variant">
+                    These figures show your unsaved changes. Pay or save to store them.
+                </p>
+            )}
 
             <div className="rounded-lg border border-outline-variant bg-surface px-4 py-3 space-y-2">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -111,21 +123,19 @@ export function PaymentSummary({
                         )}
                         <p className="text-label-sm mt-1">
                             Approximate only, using the ECB reference rate
-                            {exchange.status === 'ready' ? ` for ${exchange.date}` : ''} via Frankfurter. Your bank’s
-                            rate will differ.
+                            {exchange.status === 'ready' ? ` for ${exchange.date}` : ''} via Frankfurter. Your bank’s rate will differ.
                         </p>
                     </div>
                 )}
             </div>
 
-            <p className="text-label-sm text-on-surface-variant">{costDetails}</p>
             <RefundEmailCta
                 refundEmail={refundEmail}
                 eventTitle={eventTitle}
                 fullName={fullName}
-                registrationCode={registrationCode}
+                registrationCode={money.registrationCode}
                 totalPaise={totalPaise}
-                paidPaise={amountPaidPaise}
+                paidPaise={alreadyPaidPaise}
             />
         </section>
     );

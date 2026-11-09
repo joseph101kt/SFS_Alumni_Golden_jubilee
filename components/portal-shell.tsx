@@ -8,7 +8,6 @@ import GetAppDialog from '@/components/get-app-dialog';
 const baseLinks: { href: string; label: string; emphasize?: boolean }[] = [
   { href: '/member', label: 'Home' },
   { href: '/member/donate', label: 'Donate', emphasize: true },
-  { href: '/directory', label: 'People' },
   { href: '/events', label: 'Events' },
   { href: '/stories', label: 'Stories' },
   { href: '/memories', label: 'Memories' },

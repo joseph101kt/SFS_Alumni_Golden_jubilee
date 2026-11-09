@@ -1,25 +1,25 @@
 // lib/events/existing-registration.ts
 // Shapes for a saved event registration and the merge that prefills the form from it.
+// The form reads the server's figures. It never recomputes the fee or the donation.
 
-import {
-  guestsFromUnknown,
-  normalizeFoodPreference,
-  type FoodPreference,
-  type GuestChoice,
-} from '../registration/registration';
+import { normalizeFoodPreference, type FoodPreference } from '../registration/registration';
 import { parseLocation } from '../registration/registration-fields';
 
 export type ExistingRegistrationRow = {
   attending: boolean;
-  self_lunch: boolean;
-  self_preference: string | null;
-  guests?: unknown;
-  number_of_guests?: number;
+  lunch: boolean;
+  food_preference: string | null;
+  number_of_guests: number | null;
+  guests_eating: number | null;
   phone_number: string | null;
   payment_status: string;
-  amount_paid_paise?: number;
-  amount_due_paise?: number;
   total_cost_paise?: number;
+  amount_paid_paise?: number;
+  fee_due_paise?: number;
+  donation_due_paise?: number;
+  total_due_paise?: number;
+  intended_donation_paise?: number;
+  donation_payment_status?: string | null;
 };
 
 export type RegistrationProfileSnapshot = {
@@ -42,14 +42,24 @@ export type RegistrationPrefill = {
   city: string;
   country: string;
   attending: boolean;
-  self_lunch: boolean;
-  self_preference: FoodPreference;
-  guests: GuestChoice[];
+  lunch: boolean;
+  /** Shared food choice for everyone eating. Defaults to veg when nobody is eating yet. */
+  food_preference: FoodPreference;
+  number_of_guests: number;
+  guests_eating: number;
+  intended_donation_paise: number;
   payment_status?: string;
-  amount_paid_paise: number;
-  amount_due_paise: number;
+  donation_payment_status: string | null;
   total_cost_paise: number;
+  amount_paid_paise: number;
+  fee_due_paise: number;
+  donation_due_paise: number;
+  total_due_paise: number;
 };
+
+function nonNegativeInt(value: unknown): number {
+  return Math.max(0, Math.floor(Number(value) || 0));
+}
 
 /** Merge account profile + saved event registration into registration-form fields. */
 export function mergeRegistrationPrefill(
@@ -67,12 +77,17 @@ export function mergeRegistrationPrefill(
     city: loc.city,
     country: loc.country,
     attending: row?.attending ?? true,
-    self_lunch: row?.self_lunch ?? true,
-    self_preference: normalizeFoodPreference(row?.self_preference),
-    guests: guestsFromUnknown(row?.guests),
+    lunch: row?.lunch ?? true,
+    food_preference: normalizeFoodPreference(row?.food_preference),
+    number_of_guests: nonNegativeInt(row?.number_of_guests),
+    guests_eating: nonNegativeInt(row?.guests_eating),
+    intended_donation_paise: nonNegativeInt(row?.intended_donation_paise),
     payment_status: row?.payment_status,
-    amount_paid_paise: Math.max(0, Number(row?.amount_paid_paise) || 0),
-    amount_due_paise: Math.max(0, Number(row?.amount_due_paise) || 0),
-    total_cost_paise: Math.max(0, Number(row?.total_cost_paise) || 0),
+    donation_payment_status: row?.donation_payment_status ?? null,
+    total_cost_paise: nonNegativeInt(row?.total_cost_paise),
+    amount_paid_paise: nonNegativeInt(row?.amount_paid_paise),
+    fee_due_paise: nonNegativeInt(row?.fee_due_paise),
+    donation_due_paise: nonNegativeInt(row?.donation_due_paise),
+    total_due_paise: nonNegativeInt(row?.total_due_paise),
   };
 }

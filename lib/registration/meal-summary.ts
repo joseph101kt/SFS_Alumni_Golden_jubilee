@@ -1,12 +1,9 @@
 // lib/registration/meal-summary.ts
-// Counts who is having lunch and their food choice, for check-in and the admin list.
-// The alumnus eats only when attending and having lunch. Guests always eat.
+// Counts who is having lunch and the shared food choice, for check-in and the admin list.
+// The alumnus eats only when attending and having lunch. Guests eat by count.
+// Everyone eating has the same veg / non-veg choice.
 
-import {
-  normalizeFoodPreference,
-  type FoodPreference,
-  type GuestChoice,
-} from '@/lib/registration/registration';
+import { normalizeFoodPreference } from '@/lib/registration/registration';
 
 export type MealCounts = {
   lunchVeg: number;
@@ -15,26 +12,21 @@ export type MealCounts = {
 
 export type MealCountInput = {
   attending: boolean;
-  selfLunch: boolean;
-  selfPreference: unknown;
-  guests: GuestChoice[];
+  alumnusEats: boolean;
+  foodPreference: unknown;
+  guestsEating: number;
 };
 
 export function mealCounts(input: MealCountInput): MealCounts {
-  const counts: MealCounts = { lunchVeg: 0, lunchNonVeg: 0 };
+  const alumnusCount = input.attending && input.alumnusEats ? 1 : 0;
+  const guestCount = Math.max(0, Math.floor(Number(input.guestsEating) || 0));
+  const eaters = alumnusCount + guestCount;
 
-  function add(preference: FoodPreference) {
-    if (preference === 'non-veg') counts.lunchNonVeg += 1;
-    else counts.lunchVeg += 1;
-  }
+  if (eaters === 0) return { lunchVeg: 0, lunchNonVeg: 0 };
 
-  if (input.attending && input.selfLunch) {
-    add(normalizeFoodPreference(input.selfPreference));
-  }
-  for (const guest of input.guests) {
-    add(guest.preference);
-  }
-  return counts;
+  return normalizeFoodPreference(input.foodPreference) === 'non-veg'
+    ? { lunchVeg: 0, lunchNonVeg: eaters }
+    : { lunchVeg: eaters, lunchNonVeg: 0 };
 }
 
 export function formatMealCounts(counts: MealCounts): string {

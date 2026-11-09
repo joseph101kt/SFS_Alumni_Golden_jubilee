@@ -1,6 +1,7 @@
 // lib/events/register.ts
 // Reads and saves one account's registration for one event. The fee comes only from
-// getEventCostBreakdown in lib/registration/registration, so this file never sets prices.
+// getEventCostBreakdown. The donation intent is stored as a pending donation row linked
+// from the registration. Payment and code issuance happen in mark-paid.ts.
 
 import type { AlumniAccount } from '@/lib/auth/request';
 import {
@@ -11,11 +12,22 @@ import {
 } from '@/lib/events/balance';
 import { selectCatalog } from '@/lib/events/catalog-select';
 import type { EventCatalog } from '@/lib/events/types';
-import type { ExistingRegistrationRow } from '@/lib/events/existing-registration';
+import { repriceEventRegistrations } from '@/lib/events/reprice';
+import {
+  donationDuePaise,
+  issueRegistrationCodeIfEligible,
+  loadDonation,
+  type DonationSnapshot,
+} from '@/lib/events/mark-paid';
+import { readRegistrationCode, type RegistrationCodeAdmin } from '@/lib/events/registration-code';
+import { assertDonationAmountPaise } from '@/lib/donations/validate';
 import {
   MAX_GUESTS,
+  anyoneEating,
+  clampGuestCount,
+  clampGuestsEating,
   getEventCostBreakdown,
-  guestsFromUnknown,
+  isEventAttending,
   normalizeFoodPreference,
 } from '@/lib/registration/registration';
 import {
@@ -25,17 +37,37 @@ import {
   mergeProfilePack,
   readPackedProfile,
 } from '@/lib/registration/registration-fields';
-import { repriceEventRegistrations } from '@/lib/events/reprice';
-import {
-  ensureRegistrationCode,
-  readRegistrationCode,
-  type RegistrationCodeAdmin,
-} from '@/lib/events/registration-code';
 import { normalizePhoneNumber, phoneValidationError, splitE164 } from '@/lib/phone';
 import { createAdminClient } from '@/lib/supabase-admin';
 
+type AdminClient = ReturnType<typeof createAdminClient>;
+
 const REG_SELECT =
-  'id,event_id,number_of_guests,attending,self_lunch,self_preference,guests,phone_number,payment_status,total_cost_paise,amount_paid_paise';
+  'id,event_id,number_of_guests,guests_eating,attending,lunch,food_preference,phone_number,payment_status,total_cost_paise,amount_paid_paise,donation_id,core_committee_manually_verified';
+
+type RegistrationRow = {
+  id: string;
+  event_id: string;
+  number_of_guests: number;
+  guests_eating: number;
+  attending: boolean;
+  lunch: boolean;
+  food_preference: string | null;
+  phone_number: string | null;
+  payment_status: string;
+  total_cost_paise: number;
+  amount_paid_paise: number;
+  donation_id: string | null;
+  core_committee_manually_verified: boolean | null;
+};
+
+type ExistingRow = {
+  id: string;
+  payment_status: string;
+  amount_paid_paise: number;
+  donation_id: string | null;
+  core_committee_manually_verified: boolean | null;
+};
 
 function profilePayload(me: AlumniAccount) {
   return {
@@ -49,18 +81,78 @@ function profilePayload(me: AlumniAccount) {
   };
 }
 
-function withBalance(row: {
-  total_cost_paise: number;
-  amount_paid_paise?: number | null;
-  payment_status: string;
-}) {
-  const amount_paid_paise = Math.max(0, Number(row.amount_paid_paise) || 0);
-  const total_cost_paise = Math.max(0, Number(row.total_cost_paise) || 0);
-  return {
-    amount_paid_paise,
-    amount_due_paise: amountDuePaise(total_cost_paise, amount_paid_paise),
-    payment_status: row.payment_status,
-  };
+/**
+ * Brings the donation row in line with the intended amount.
+ * - A paid donation cannot be changed here. The committee handles it.
+ * - Zero intent marks any unpaid donation as failed, meaning it was dropped before payment.
+ * - A positive intent updates the unpaid donation, or creates one.
+ */
+async function syncDonationIntent(
+  admin: AdminClient,
+  input: {
+    accountId: string;
+    eventId: string;
+    existingDonationId: string | null;
+    intendedPaise: number;
+  }
+): Promise<{ ok: true; donation: DonationSnapshot | null } | { ok: false; status: number; error: string }> {
+  const existing = await loadDonation(admin, input.existingDonationId);
+  const now = new Date().toISOString();
+
+  if (existing?.payment_status === 'paid') {
+    if (input.intendedPaise === existing.amount_paise) return { ok: true, donation: existing };
+    return {
+      ok: false,
+      status: 409,
+      error: 'Your donation is already paid. Contact the committee to change it.',
+    };
+  }
+
+  if (input.intendedPaise === 0) {
+    if (existing) {
+      const { error } = await admin
+        .from('donations')
+        .update({ payment_status: 'failed', updated_at: now })
+        .eq('id', existing.id);
+      if (error) {
+        console.error('donation clear', error);
+        return { ok: false, status: 500, error: 'Could not update donation' };
+      }
+    }
+    return { ok: true, donation: null };
+  }
+
+  if (existing) {
+    const { error } = await admin
+      .from('donations')
+      .update({ amount_paise: input.intendedPaise, payment_status: 'pending', updated_at: now })
+      .eq('id', existing.id);
+    if (error) {
+      console.error('donation update', error);
+      return { ok: false, status: 500, error: 'Could not update donation' };
+    }
+    return {
+      ok: true,
+      donation: { id: existing.id, amount_paise: input.intendedPaise, payment_status: 'pending' },
+    };
+  }
+
+  const { data, error } = await admin
+    .from('donations')
+    .insert({
+      account_id: input.accountId,
+      event_id: input.eventId,
+      cause_id: null,
+      amount_paise: input.intendedPaise,
+      payment_status: 'pending',
+    })
+    .select('id,amount_paise,payment_status')
+    .single();
+  if (error || !data) {
+    console.error('donation insert', error);
+    return { ok: false, status: 500, error: 'Could not save donation' };
+  }
+  return { ok: true, donation: data as unknown as DonationSnapshot };
 }
 
 export async function getAccountRegistrationForEvent(
@@ -102,8 +194,8 @@ export async function getAccountRegistrationForEvent(
     if (!refreshed.error && refreshed.data) registrationRow = refreshed.data;
   }
 
-  // Always start from the session account (already unpacks bio → section/last_name).
-  // Overlay the DB row; never let a sparse DB profile wipe packed section/last_name.
+  // Start from the session account, then overlay the database row. Packed bio fields fill in
+  // section and last name when the columns are not present yet.
   let profile: Record<string, unknown> = profilePayload(me);
   const fullProfile = await admin
     .from('alumni_accounts')
@@ -137,29 +229,29 @@ export async function getAccountRegistrationForEvent(
     }
   }
 
-  const reg = registrationRow as
-    | (ExistingRegistrationRow & {
-        id: string;
-        event_id: string;
-        total_cost_paise: number;
-        amount_paid_paise?: number;
-      })
-    | null;
+  const reg = registrationRow as RegistrationRow | null;
+  if (!reg) return { status: 200, payload: { registration: null, profile } };
 
-  const registration_code = reg
-    ? await readRegistrationCode(admin as unknown as RegistrationCodeAdmin, reg.id)
-    : null;
+  const feeTotal = Math.max(0, Number(reg.total_cost_paise) || 0);
+  const feePaid = Math.max(0, Number(reg.amount_paid_paise) || 0);
+  const feeDue = amountDuePaise(feeTotal, feePaid);
+
+  const donation = await loadDonation(admin, reg.donation_id);
+  const donationDue = donationDuePaise(donation);
+  const registrationCode = await readRegistrationCode(admin as unknown as RegistrationCodeAdmin, reg.id);
 
   return {
     status: 200,
     payload: {
-      registration: reg
-        ? {
-            ...reg,
-            ...withBalance(reg),
-            registration_code,
-          }
-        : null,
+      registration: {
+        ...reg,
+        fee_due_paise: feeDue,
+        intended_donation_paise: donation?.amount_paise ?? 0,
+        donation_payment_status: donation?.payment_status ?? null,
+        donation_due_paise: donationDue,
+        total_due_paise: feeDue + donationDue,
+        registration_code: registrationCode,
+      },
       profile,
     },
   };
@@ -190,29 +282,39 @@ export async function registerAccountForEvent(
 
   const catalog = event as unknown as EventCatalog;
 
+  // Attendance: the alumnus attends, or at least one guest is coming. Otherwise nothing is saved.
+  const requestedGuests = Number(body.number_of_guests ?? 0);
+  if (Number.isFinite(requestedGuests) && requestedGuests > MAX_GUESTS) {
+    return { status: 400, payload: { error: `You can register up to ${MAX_GUESTS} guests` } };
+  }
+  const guestCount = clampGuestCount(requestedGuests);
   const attending = body.attending !== false;
-  const selfLunch = body.self_lunch !== false;
-  const selfPreference = normalizeFoodPreference(body.self_preference);
-
-  // Guests are always veg or non-veg and always eat lunch. The list length is the guest count.
-  const guests = guestsFromUnknown(body.guests);
-  if (guests.length > MAX_GUESTS) {
+  if (!isEventAttending(attending, guestCount)) {
     return {
       status: 400,
-      payload: { error: `You can register up to ${MAX_GUESTS} guests` },
+      payload: { error: 'Choose at least one person to attend: you or a guest' },
     };
   }
+
+  // Eating: the alumnus eats only when attending. Guests eat by count.
+  const alumnusEats = attending && body.lunch !== false;
+  const guestsEating = clampGuestsEating(body.guests_eating, guestCount);
+  // The shared food choice is stored only when someone is eating.
+  const foodPreference = anyoneEating(alumnusEats, guestsEating)
+    ? normalizeFoodPreference(body.food_preference)
+    : null;
 
   const feeBatchRaw = body.batch != null && body.batch !== '' ? Number(body.batch) : null;
   const feeBatch = isValidBatch(feeBatchRaw) ? feeBatchRaw : me.batch;
 
   const breakdown = getEventCostBreakdown({
     attending,
-    selfLunch,
+    alumnusEats,
     batch: feeBatch ?? null,
-    guestCount: guests.length,
+    guestCount,
+    guestsEating,
   });
-  const total = breakdown.totalCost;
+  const feeTotal = breakdown.totalCost;
 
   const rawPhone = body.phone_number ? String(body.phone_number) : me.phone_number || '';
   const phone =
@@ -225,38 +327,68 @@ export async function registerAccountForEvent(
   }
   const phoneParts = splitE164(phone);
   const phoneErr = phoneValidationError(phoneParts.isd, phoneParts.national);
-  if (phoneErr) {
-    return { status: 400, payload: { error: phoneErr } };
+  if (phoneErr) return { status: 400, payload: { error: phoneErr } };
+
+  // Donation intent. The client sends an amount to donate, never a payable total.
+  let intendedDonationPaise = 0;
+  if (body.intended_donation_paise != null && body.intended_donation_paise !== '') {
+    const raw = Number(body.intended_donation_paise);
+    if (raw !== 0) {
+      try {
+        intendedDonationPaise = assertDonationAmountPaise(raw);
+      } catch (err) {
+        return {
+          status: 400,
+          payload: { error: err instanceof Error ? err.message : 'Invalid donation' },
+        };
+      }
+    }
   }
 
-  const { data: existing } = await admin
+  const { data: existingRaw } = await admin
     .from('event_registrations')
-    .select('id,payment_status,amount_paid_paise')
+    .select('id,payment_status,amount_paid_paise,donation_id,core_committee_manually_verified')
     .eq('event_id', eventId)
     .eq('account_id', me.id)
     .in('payment_status', [...OPEN_PAYMENT_STATUSES])
     .maybeSingle();
+  const existing = existingRaw as ExistingRow | null;
 
+  const donationSync = await syncDonationIntent(admin, {
+    accountId: me.id,
+    eventId,
+    existingDonationId: existing?.donation_id ?? null,
+    intendedPaise: intendedDonationPaise,
+  });
+  if (!donationSync.ok) {
+    return { status: donationSync.status, payload: { error: donationSync.error } };
+  }
+  const donation = donationSync.donation;
+  const donationId = donation?.id ?? null;
+  const donationDue = donationDuePaise(donation);
+
+  // The fee's payment status. A ₹0 fee is paid at save; the donation is tracked separately.
   const priorPaid = Math.max(0, Number(existing?.amount_paid_paise) || 0);
-  const payment_status = statusFromAmounts(total, priorPaid);
-  const amount_due_paise = amountDuePaise(total, priorPaid);
+  const payment_status = statusFromAmounts(feeTotal, priorPaid);
+  const feeDue = amountDuePaise(feeTotal, priorPaid);
 
   const row = {
     event_id: eventId,
     account_id: me.id,
     phone_number: phone,
-    number_of_guests: guests.length,
+    number_of_guests: guestCount,
+    guests_eating: guestsEating,
     attending,
-    self_lunch: selfLunch,
-    self_preference: selfPreference,
-    guests,
-    total_cost_paise: total,
+    lunch: alumnusEats,
+    food_preference: foodPreference,
+    total_cost_paise: feeTotal,
     amount_paid_paise: priorPaid,
     payment_status,
+    donation_id: donationId,
     updated_at: new Date().toISOString(),
   };
 
-  let regId = existing?.id;
+  let regId: string | undefined = existing?.id;
   if (existing?.id) {
     const { error } = await admin.from('event_registrations').update(row).eq('id', existing.id);
     if (error) {
@@ -272,28 +404,25 @@ export async function registerAccountForEvent(
       .insert(row)
       .select('id')
       .single();
-    if (error) {
+    if (error || !inserted) {
       console.error('reg insert', error);
       return {
         status: 500,
         payload: {
-          error: error.message || 'Could not save registration. Apply the event_registrations migration.',
+          error: error?.message || 'Could not save registration. Apply the event_registrations migration.',
         },
       };
     }
-    regId = inserted.id;
+    regId = inserted.id as string;
   }
+  if (!regId) return { status: 500, payload: { error: 'Could not save registration' } };
 
-  // A registration that is paid in full (including a ₹0 total) gets its QR code now.
-  // Not-attending registrations are confirmed but get no QR.
-  let registration_code: string | null = null;
-  if (payment_status === 'paid' && attending && regId) {
-    registration_code = await ensureRegistrationCode(
-      admin as unknown as RegistrationCodeAdmin,
-      regId,
-      payment_status
-    );
-  }
+  // A registration whose fee and donation are both settled gets its code now.
+  const registrationCode = await issueRegistrationCodeIfEligible(admin, regId, {
+    paymentStatus: payment_status,
+    donationDuePaise: donationDue,
+    verified: Boolean(existing?.core_committee_manually_verified),
+  });
 
   const fullName = String(body.full_name || '').trim() || me.full_name;
   const lastName = String(body.last_name || '').trim();
@@ -317,8 +446,8 @@ export async function registerAccountForEvent(
   const { error: coreError } = await admin.from('alumni_accounts').update(corePatch).eq('id', me.id);
   if (coreError) console.error('reg account core update', coreError);
 
-  // Prefer real columns when the migration is applied; always also pack into bio so
-  // Complete payment works before last_name/section exist on alumni_accounts.
+  // Prefer real columns when the migration is applied. Always also pack into bio so
+  // Complete payment works before last_name and section exist on alumni_accounts.
   if (lastName || section) {
     const extra: Record<string, unknown> = {};
     if (lastName) extra.last_name = lastName;
@@ -344,17 +473,22 @@ export async function registerAccountForEvent(
     if (packedError) console.error('reg account bio pack', packedError);
   }
 
+  const totalDue = feeDue + donationDue;
   return {
     status: 200,
     payload: {
       ok: true,
       id: regId,
       payment_status,
-      total_cost_paise: total,
+      total_cost_paise: feeTotal,
       amount_paid_paise: priorPaid,
-      amount_due_paise,
+      fee_due_paise: feeDue,
+      donation_id: donationId,
+      intended_donation_paise: donation?.amount_paise ?? 0,
+      donation_due_paise: donationDue,
+      total_due_paise: totalDue,
       jubilee_reg_status: jubilee,
-      registration_code,
+      registration_code: registrationCode,
     },
   };
 }

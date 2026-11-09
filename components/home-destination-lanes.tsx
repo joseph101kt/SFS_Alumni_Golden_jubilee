@@ -2,12 +2,6 @@ import Link from 'next/link';
 
 const lanes: { href: string; title: string; body: string; icon: string }[] = [
   {
-    href: '/directory',
-    title: 'Find people',
-    body: 'Find classmates by batch, city, and profession.',
-    icon: 'groups',
-  },
-  {
     href: '/events',
     title: 'Events',
     body: 'Reunions and school celebrations open for registration.',

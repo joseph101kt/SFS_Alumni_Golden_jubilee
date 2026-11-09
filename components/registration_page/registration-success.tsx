@@ -1,15 +1,13 @@
 // components/registration_page/registration-success.tsx
-// Confirmation screen shown after payment (or when nothing is due). Lets the
-// attendee adjust their guest count; the route decides whether to save or pay the difference.
+// Confirmation screen. The code appears only when the server has issued one. Amounts come from `money`.
 
 import type { Dispatch, SetStateAction } from 'react';
 import BackHomeLink from '@/components/back-home-link';
 import EventPushOptIn from '@/components/event-push-opt-in';
-import RefundEmailCta from '@/components/refund-email-cta';
 import RegistrationQr from '@/components/registration-qr';
 import { formatCostForDisplay, MAX_GUESTS, MIN_GUESTS } from '@/lib/registration/registration';
 import type { EventCatalog } from '@/lib/events/types';
-import { resizeGuests, type FormData } from '@/lib/registration/types';
+import type { FormData, RegistrationMoney } from '@/lib/registration/types';
 
 export interface RegistrationSuccessProps {
     formData: FormData;
@@ -17,14 +15,7 @@ export interface RegistrationSuccessProps {
     event: EventCatalog | null;
     busy: boolean;
     formDirty: boolean;
-    priceDrift: boolean;
-    liveDue: number;
-    lastDue: number;
-    totalCost: number;
-    amountPaid: number;
-    paymentStatus: string | null;
-    registrationCode: string | null;
-    costDetails: string;
+    money: RegistrationMoney;
     error: string;
     signedIn: boolean;
     onSavePartySize: () => void;
@@ -32,39 +23,18 @@ export interface RegistrationSuccessProps {
 }
 
 export function RegistrationSuccess(props: RegistrationSuccessProps) {
-    const {
-        formData,
-        setFormData,
-        event,
-        busy,
-        formDirty,
-        priceDrift,
-        liveDue,
-        lastDue,
-        totalCost,
-        amountPaid,
-        paymentStatus,
-        registrationCode,
-        costDetails,
-        error,
-        signedIn,
-        onSavePartySize,
-        onEditDetails,
-    } = props;
+    const { formData, setFormData, busy, formDirty, money, error, signedIn, onSavePartySize, onEditDetails } = props;
 
-    const isConfirmed = lastDue === 0 && paymentStatus === 'paid';
-    const guestCount = formData.guests.length;
+    const isConfirmed = money.paymentStatus === 'paid' && money.totalDuePaise === 0;
+    const code = money.registrationCode;
 
-    function changeGuestCount(requested: number) {
-        setFormData({ ...formData, guests: resizeGuests(formData.guests, requested) });
-    }
-
-    function saveButtonLabel(): string {
-        if (busy) return 'Saving…';
-        if (priceDrift && !formDirty) {
-            return liveDue > 0 ? `Save and pay ${formatCostForDisplay(liveDue)}` : 'Save updated rates';
-        }
-        return liveDue > 0 ? `Save and pay ${formatCostForDisplay(liveDue)}` : 'Save guest count';
+    function changeGuestCount(raw: string) {
+        const next = Math.min(MAX_GUESTS, Math.max(MIN_GUESTS, parseInt(raw, 10) || 0));
+        setFormData({
+            ...formData,
+            number_of_guests: next,
+            guests_eating: Math.min(formData.guests_eating, next),
+        });
     }
 
     return (
@@ -79,12 +49,20 @@ export function RegistrationSuccess(props: RegistrationSuccessProps) {
                         {isConfirmed ? 'Registration confirmed' : 'Registration saved'}
                     </h1>
 
-                    {registrationCode && (
+                    {!isConfirmed && (
+                        <p className="text-body-sm text-on-surface-variant mb-6">
+                            {money.totalDuePaise > 0
+                                ? `Amount due ${formatCostForDisplay(money.totalDuePaise)}.`
+                                : 'Your registration is saved. Your registration ID appears once payment is confirmed.'}
+                        </p>
+                    )}
+
+                    {code && (
                         <div className="mb-6 rounded-lg border border-outline-variant bg-surface px-4 py-5">
                             <p className="text-label-md text-primary uppercase tracking-wider">Registration ID</p>
-                            <p className="mt-2 text-headline-md text-primary tracking-[0.18em] font-bold">{registrationCode}</p>
+                            <p className="mt-2 text-headline-md text-primary tracking-[0.18em] font-bold">{code}</p>
                             <div className="mt-4 flex justify-center">
-                                <RegistrationQr code={registrationCode} />
+                                <RegistrationQr code={code} />
                             </div>
                             <p className="mt-3 text-body-sm text-on-surface-variant">Show this QR code at the venue.</p>
                         </div>
@@ -94,9 +72,6 @@ export function RegistrationSuccess(props: RegistrationSuccessProps) {
                         <EventPushOptIn auto autoRequest />
                     </div>
 
-
-
-
                     {error && (
                         <div role="alert" className="p-3 rounded-lg bg-error-container text-error text-body-sm mb-6 text-left">
                             {error}
@@ -104,23 +79,24 @@ export function RegistrationSuccess(props: RegistrationSuccessProps) {
                     )}
 
                     <div className="flex flex-col gap-3">
-                        {(formDirty || priceDrift) && (
+                        {formDirty && (
                             <button
                                 type="button"
                                 disabled={busy}
                                 onClick={onSavePartySize}
                                 className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-lg bg-primary hover:bg-navy-subtle text-on-primary text-label-md uppercase tracking-wider shadow-md transition-all disabled:opacity-50 cursor-pointer"
                             >
-                                {saveButtonLabel()}
+                                {busy ? 'Saving…' : 'Save changes'}
                             </button>
                         )}
-                        {!formDirty && lastDue > 0 && (
+                        {!formDirty && money.totalDuePaise > 0 && (
                             <button
                                 type="button"
-                                onClick={onEditDetails}
-                                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-lg bg-primary hover:bg-navy-subtle text-on-primary text-label-md uppercase tracking-wider shadow-md transition-all"
+                                onClick={onSavePartySize}
+                                disabled={busy}
+                                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-lg bg-primary hover:bg-navy-subtle text-on-primary text-label-md uppercase tracking-wider shadow-md transition-all disabled:opacity-50"
                             >
-                                Back to pay balance
+                                {busy ? 'Working…' : `Pay ${formatCostForDisplay(money.totalDuePaise)}`}
                             </button>
                         )}
                         <button
@@ -133,9 +109,9 @@ export function RegistrationSuccess(props: RegistrationSuccessProps) {
                         <BackHomeLink
                             signedIn={signedIn}
                             showIcon={false}
-                            guestHref={lastDue === 0 ? '/member' : '/'}
+                            guestHref={isConfirmed ? '/member' : '/'}
                             signedInLabel="Go to alumni portal"
-                            guestLabel={lastDue === 0 ? 'Go to alumni portal' : 'Back to Home'}
+                            guestLabel={isConfirmed ? 'Go to alumni portal' : 'Back to Home'}
                             className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-lg border border-outline-variant text-primary text-label-md uppercase tracking-wider transition-all"
                         />
                     </div>

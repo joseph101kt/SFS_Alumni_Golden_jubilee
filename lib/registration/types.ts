@@ -1,14 +1,10 @@
 // lib/registration/types.ts
-// Shared types, option lists, and pure helpers for the registration flow.
-// Framework-free so both the route and the UI components can import it.
+// Shared types and pure helpers for the registration flow. Framework-free so the route and the
+// UI can both import it. Money is never computed here: the server returns every amount, and this
+// file only stores and formats what it was given.
 
 import { COUNTRIES } from '@/lib/countries';
-import {
-    clampGuestCount,
-    normalizeFoodPreference,
-    type FoodPreference,
-    type GuestChoice,
-} from '@/lib/registration/registration';
+import { normalizeFoodPreference, type FoodPreference } from '@/lib/registration/registration';
 import { batchYears } from '@/lib/registration/registration-fields';
 
 export { isSeniorSponsoredBatch } from '@/lib/registration/registration';
@@ -84,6 +80,11 @@ export interface AuthProfile {
 
 export type DonationOption = 'zero' | '5000' | '10000' | '25000' | 'custom';
 
+/**
+ * What the form edits. Attendance and food are choices, not prices.
+ * number_of_guests is how many guests are coming. guests_eating is how many of them eat.
+ * food_preference is one shared choice for everyone eating.
+ */
 export interface FormData {
     phone_number: string;
     full_name: string;
@@ -93,55 +94,96 @@ export interface FormData {
     city: string;
     country: string;
     email: string;
-    /** Whether the alumnus is attending. When false, their fee and food questions are skipped. */
     attending: boolean;
-    /** Whether the alumnus eats lunch. Only the alumnus has this choice; guests always eat. */
-    self_lunch: boolean;
-    /** The alumnus's food preference. Only asked when they are eating lunch. */
-    self_preference: FoodPreference;
-    /** Guests only, excluding the alumnus. The length is the guest count, 0 to 9. */
-    guests: GuestChoice[];
+    lunch: boolean;
+    food_preference: FoodPreference;
+    number_of_guests: number;
+    guests_eating: number;
     donation_option: DonationOption;
     /** Raw digits typed into the custom donation input. Empty means no donation. */
     donation_custom: string;
 }
 
-export const DEFAULT_GUEST: GuestChoice = { preference: 'veg' };
+export const EMPTY_FORM: FormData = {
+    phone_number: '',
+    full_name: '',
+    last_name: '',
+    section: '',
+    city: '',
+    country: '',
+    email: '',
+    attending: true,
+    lunch: true,
+    food_preference: 'veg',
+    number_of_guests: 0,
+    guests_eating: 0,
+    donation_option: 'zero',
+    donation_custom: '',
+};
 
-const BATCH_YEARS = batchYears();
+/** Every amount the screens show. Filled only from the server, never calculated in the browser. */
+export interface RegistrationMoney {
+    /** Event fee for the registration, from the server. */
+    feeTotalPaise: number;
+    feePaidPaise: number;
+    feeDuePaise: number;
+    /** Donation the registration intends to give, from the linked donation row. */
+    donationIntendedPaise: number;
+    donationDuePaise: number;
+    donationPaymentStatus: string | null;
+    /** Everything still owed: fee plus donation. This is what Pay charges. */
+    totalDuePaise: number;
+    /** Payment status of the fee only. */
+    paymentStatus: string | null;
+    registrationCode: string | null;
+}
 
-export const BATCH_OPTIONS = BATCH_YEARS.map((year) => ({
+export const EMPTY_MONEY: RegistrationMoney = {
+    feeTotalPaise: 0,
+    feePaidPaise: 0,
+    feeDuePaise: 0,
+    donationIntendedPaise: 0,
+    donationDuePaise: 0,
+    donationPaymentStatus: null,
+    totalDuePaise: 0,
+    paymentStatus: null,
+    registrationCode: null,
+};
+
+function nonNegativeInt(value: unknown): number {
+    const whole = Math.floor(Number(value));
+    return Number.isFinite(whole) && whole > 0 ? whole : 0;
+}
+
+/** Reads the amounts the server returned for a saved registration. Missing values become 0 or null. */
+export function moneyFromRegistration(source: Record<string, unknown>): RegistrationMoney {
+    return {
+        feeTotalPaise: nonNegativeInt(source.total_cost_paise),
+        feePaidPaise: nonNegativeInt(source.amount_paid_paise),
+        feeDuePaise: nonNegativeInt(source.fee_due_paise),
+        donationIntendedPaise: nonNegativeInt(source.intended_donation_paise),
+        donationDuePaise: nonNegativeInt(source.donation_due_paise),
+        donationPaymentStatus:
+            typeof source.donation_payment_status === 'string' ? source.donation_payment_status : null,
+        totalDuePaise: nonNegativeInt(source.total_due_paise),
+        paymentStatus: typeof source.payment_status === 'string' ? source.payment_status : null,
+        registrationCode: typeof source.registration_code === 'string' ? source.registration_code : null,
+    };
+}
+
+export const DONATION_OPTIONS_RUPEES: Record<'zero' | '5000' | '10000' | '25000', number> = {
+    zero: 0,
+    '5000': 5000,
+    '10000': 10000,
+    '25000': 25000,
+};
+
+export const BATCH_OPTIONS = batchYears().map((year) => ({
     value: String(year),
     label: String(year),
 }));
 
 export const COUNTRY_OPTIONS = COUNTRIES.map((country) => ({ value: country, label: country }));
-
-/** Grows or shrinks the guest list to match the requested count, clamped to 0–9. */
-export function resizeGuests(guests: GuestChoice[], requestedCount: number): GuestChoice[] {
-    const size = clampGuestCount(requestedCount);
-    if (guests.length === size) return guests;
-    if (guests.length > size) return guests.slice(0, size);
-    return [
-        ...guests,
-        ...Array.from({ length: size - guests.length }, () => ({ ...DEFAULT_GUEST })),
-    ];
-}
-
-/**
- * Compact signature of the choices that affect price. Used to detect unsaved edits
- * (dirty form) by comparing the current form against the last saved state.
- */
-export function choicesFingerprint(data: FormData): string {
-    return [
-        data.attending,
-        data.self_lunch,
-        data.self_preference,
-        JSON.stringify(data.guests),
-        data.donation_option,
-        data.donation_custom,
-    ].join('|');
-}
 
 // ---- Donation -------------------------------------------------------------
 
@@ -163,7 +205,7 @@ export function customDonationRupees(raw: string): number | null {
     return Number(digits);
 }
 
-/** Donation in whole rupees. A custom amount counts only when the user entered one. */
+/** Donation in whole rupees the user intends to give. Invalid custom amounts count as zero. */
 export function donationRupeesFor(data: FormData): number {
     if (data.donation_option === 'custom') {
         const custom = customDonationRupees(data.donation_custom);
@@ -171,6 +213,20 @@ export function donationRupeesFor(data: FormData): number {
         return custom >= DONATION_MIN_RUPEES && custom <= DONATION_MAX_RUPEES ? custom : 0;
     }
     return DONATION_OPTIONS.find((option) => option.value === data.donation_option)?.rupees ?? 0;
+}
+
+/** The intended donation in paise, which is what the server receives. */
+export function donationIntentPaise(data: FormData): number {
+    return donationRupeesFor(data) * 100;
+}
+
+/** Form values for a saved donation amount, so a reload shows the same choice. */
+export function donationFormFromPaise(paise: number): Pick<FormData, 'donation_option' | 'donation_custom'> {
+    const rupees = Math.round(Math.max(0, paise) / 100);
+    if (rupees === 0) return { donation_option: 'zero', donation_custom: '' };
+    const preset = DONATION_OPTIONS.find((option) => option.value !== 'custom' && option.rupees === rupees);
+    if (preset) return { donation_option: preset.value, donation_custom: '' };
+    return { donation_option: 'custom', donation_custom: String(rupees) };
 }
 
 /** Message for an entered custom amount outside the allowed range; null when valid or empty. */
@@ -181,4 +237,19 @@ export function donationValidationError(data: FormData): string | null {
     if (custom < DONATION_MIN_RUPEES) return `Minimum donation is Rs. ${DONATION_MIN_RUPEES}.`;
     if (custom > DONATION_MAX_RUPEES) return `Maximum donation is Rs. ${DONATION_MAX_RUPEES.toLocaleString('en-IN')}.`;
     return null;
+}
+
+/**
+ * Compact signature of everything the server prices. Used to tell whether the form has
+ * unsaved changes compared with the last saved state.
+ */
+export function choicesFingerprint(data: FormData): string {
+    return [
+        data.attending,
+        data.lunch,
+        data.food_preference,
+        data.number_of_guests,
+        data.guests_eating,
+        donationIntentPaise(data),
+    ].join('|');
 }

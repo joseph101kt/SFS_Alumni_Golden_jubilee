@@ -1,20 +1,27 @@
 // components/registration_page/registration-form.tsx
-// The main details form. Holds no save/pay state of its own: values and handlers
-// come from the route so the save and payment logic stays in one place.
+// The details form. Holds no save or payment logic: values and handlers come from the page.
+// Amounts shown are `displayMoney` (saved, or a live preview while edited). The Pay button is
+// hidden when the bank-transfer route is selected.
 
 import { useState, type Dispatch, type FormEvent, type SetStateAction } from 'react';
 import BackHomeLink from '@/components/back-home-link';
 import SearchableSelect from '@/components/searchable-select';
-import { DonationSection } from '@/components/registration_page/registration-donation';
+import {
+    DonationSection,
+    type PaymentRoute,
+} from '@/components/registration_page/registration-donation';
 import { PaymentSummary } from '@/components/registration_page/registration-payment-summary';
 import { COUNTRY_CALLING_CODES, phoneInputHint, phoneValidationError } from '@/lib/phone';
 import {
+    anyoneEating,
+    clampGuestCount,
+    clampGuestsEating,
     EVENT_FEE_PER_PERSON_PAISE,
     formatCostForDisplay,
     MAX_GUESTS,
     MIN_GUESTS,
+    normalizeFoodPreference,
     type FoodPreference,
-    type GuestChoice,
 } from '@/lib/registration/registration';
 import { SECTIONS } from '@/lib/registration/registration-fields';
 import type { EventCatalog } from '@/lib/events/types';
@@ -23,8 +30,8 @@ import {
     BATCH_OPTIONS,
     COUNTRY_OPTIONS,
     isSeniorSponsoredBatch,
-    resizeGuests,
     type FormData,
+    type RegistrationMoney,
 } from '@/lib/registration/types';
 
 export type RegistrationFormMode = 'new' | 'pay' | 'update';
@@ -39,28 +46,22 @@ export interface RegistrationFormProps {
     event: EventCatalog | null;
     formMode: RegistrationFormMode;
     hasSavedReg: boolean;
-    paymentStatus: string | null;
     busy: boolean;
     saving: boolean;
     paying: boolean;
-    totalCost: number;
-    registrationPaise: number;
-    donationPaise: number;
-    donationRupees: number;
-    costDetails: string;
-    amountPaid: number;
-    liveDue: number;
-    lastDue: number;
-    canPay: boolean;
+    /** Saved amounts from the database. Used for the status line only. */
+    money: RegistrationMoney;
+    /** Amounts to show: saved, or a live preview while the form has unsaved edits. */
+    displayMoney: RegistrationMoney;
     formDirty: boolean;
-    priceDrift: boolean;
-    registrationId: string | null;
-    registrationCode: string | null;
+    donationLocked: boolean;
+    paymentRoute: PaymentRoute;
+    setPaymentRoute: (route: PaymentRoute) => void;
     saveMessage: string;
     error: string;
     onSaveBankReference: (reference: string) => Promise<string | null>;
     onSubmit: (event: FormEvent) => void;
-    onPay: () => void;
+    onPayNow: () => void;
 }
 
 const INPUT_CLASS =
@@ -151,28 +152,20 @@ export function RegistrationForm(props: RegistrationFormProps) {
         event,
         formMode,
         hasSavedReg,
-        paymentStatus,
         busy,
         saving,
         paying,
-        totalCost,
-        registrationPaise,
-        donationPaise,
-        donationRupees,
-        costDetails,
-        amountPaid,
-        liveDue,
-        lastDue,
-        canPay,
+        money,
+        displayMoney,
         formDirty,
-        priceDrift,
-        registrationId,
-        registrationCode,
+        donationLocked,
+        paymentRoute,
+        setPaymentRoute,
         saveMessage,
         error,
         onSaveBankReference,
         onSubmit,
-        onPay,
+        onPayNow,
     } = props;
 
     const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('INR');
@@ -181,29 +174,53 @@ export function RegistrationForm(props: RegistrationFormProps) {
     const isSeniorSponsored = isSeniorSponsoredBatch(formData.batch);
     const phoneError = phoneNational ? phoneValidationError(phoneIsd, phoneNational) : null;
     const feeLabel = formatCostForDisplay(EVENT_FEE_PER_PERSON_PAISE);
-    const showFoodQuestions = formData.attending || formData.guests.length > 0;
 
-    function updateGuest(index: number, patch: Partial<GuestChoice>) {
+    // Display-only: whether the food question is shown. The fee itself comes from displayMoney.
+    const guestCount = clampGuestCount(formData.number_of_guests);
+    const guestsEating = clampGuestsEating(formData.guests_eating, guestCount);
+    const showFoodQuestion = anyoneEating(formData.attending && formData.lunch, guestsEating);
+
+    function changeGuestCount(raw: string) {
+        const next = clampGuestCount(parseInt(raw, 10));
         setFormData({
             ...formData,
-            guests: formData.guests.map((guest, i) => (i === index ? { ...guest, ...patch } : guest)),
+            number_of_guests: next,
+            guests_eating: Math.min(formData.guests_eating, next),
         });
     }
 
-    function changeGuestCount(requested: number) {
-        setFormData({ ...formData, guests: resizeGuests(formData.guests, requested) });
+    function changeGuestsEating(raw: string) {
+        setFormData({
+            ...formData,
+            guests_eating: clampGuestsEating(parseInt(raw, 10), guestCount),
+        });
     }
+
+    function changeAttending(next: boolean) {
+        setFormData({ ...formData, attending: next });
+    }
+
+    const payLabel =
+        paying
+            ? 'Opening payment…'
+            : displayMoney.totalDuePaise > 0
+              ? `${formDirty ? 'Save & pay' : 'Pay'} ${formatCostForDisplay(displayMoney.totalDuePaise)}`
+              : 'Nothing due';
 
     return (
         <div className="min-h-screen bg-surface flex flex-col items-center justify-center px-6 pt-20 pb-12">
             <div className="w-full max-w-3xl">
                 <div className="bg-surface-paper rounded-2xl shadow-lg p-8 border border-surface-container-low">
                     <h1 className="text-headline-lg text-primary mb-2">
-                        {formMode === 'update' ? 'Update registration' : formMode === 'pay' ? 'Complete payment' : 'Event Registration'}
+                        {formMode === 'update'
+                            ? 'Update registration'
+                            : formMode === 'pay'
+                              ? 'Complete payment'
+                              : 'Event Registration'}
                     </h1>
                     <p className={`text-body-sm text-on-surface-variant ${hasSavedReg ? 'mb-4' : 'mb-8'}`}>
                         {hasSavedReg
-                            ? 'Change your attendance, lunch, or guests anytime. Save first, then pay only the difference if anything is due.'
+                            ? 'Change your attendance, lunch, or guests anytime. Amounts update as you edit. Pay saves your changes first.'
                             : event
                               ? `Register for ${event.title}`
                               : 'Complete your registration for the Golden Jubilee'}
@@ -211,8 +228,7 @@ export function RegistrationForm(props: RegistrationFormProps) {
                     {hasSavedReg && (
                         <p className="rounded-xl border border-jubilee-gold-light bg-secondary-container/30 p-4 text-body-sm text-on-secondary-fixed-variant mb-8">
                             Saved registration loaded
-                            {paymentStatus ? ` · status: ${paymentStatus}` : ''}. Adjust your choices below, tap Save, then
-                            Pay if a balance remains.
+                            {money.paymentStatus ? ` · status: ${money.paymentStatus}` : ''}.
                         </p>
                     )}
 
@@ -229,17 +245,6 @@ export function RegistrationForm(props: RegistrationFormProps) {
                                         value={formData.full_name}
                                         onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                                         required
-                                        disabled={busy}
-                                        className={INPUT_CLASS}
-                                    />
-                                </div>
-
-                                <div className="flex flex-col">
-                                    <label className="text-label-md text-primary mb-2 uppercase tracking-wider">Last Name</label>
-                                    <input
-                                        type="text"
-                                        value={formData.last_name}
-                                        onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
                                         disabled={busy}
                                         className={INPUT_CLASS}
                                     />
@@ -299,6 +304,33 @@ export function RegistrationForm(props: RegistrationFormProps) {
                                 </div>
 
                                 <div className="flex flex-col">
+                                    <label className="text-label-md text-primary mb-2 uppercase tracking-wider">City *</label>
+                                    <input
+                                        type="text"
+                                        value={formData.city}
+                                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                                        placeholder="City"
+                                        required
+                                        disabled={busy}
+                                        className={INPUT_CLASS}
+                                    />
+                                </div>
+
+                                <div className="flex flex-col">
+                                    <label className="text-label-md text-primary mb-2 uppercase tracking-wider">Country *</label>
+                                    <SearchableSelect
+                                        options={COUNTRY_OPTIONS}
+                                        value={formData.country}
+                                        onChange={(v) => setFormData({ ...formData, country: v })}
+                                        placeholder="Type to search country…"
+                                        required
+                                        disabled={busy}
+                                        aria-label="Country"
+                                        emptyLabel="No matching country"
+                                    />
+                                </div>
+
+                                <div className="flex flex-col">
                                     <label className="text-label-md text-primary mb-2 uppercase tracking-wider">Batch (Year) *</label>
                                     <SearchableSelect
                                         options={BATCH_OPTIONS}
@@ -331,33 +363,6 @@ export function RegistrationForm(props: RegistrationFormProps) {
                                         ))}
                                     </select>
                                 </div>
-
-                                <div className="flex flex-col">
-                                    <label className="text-label-md text-primary mb-2 uppercase tracking-wider">City *</label>
-                                    <input
-                                        type="text"
-                                        value={formData.city}
-                                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                                        placeholder="City"
-                                        required
-                                        disabled={busy}
-                                        className={INPUT_CLASS}
-                                    />
-                                </div>
-
-                                <div className="flex flex-col">
-                                    <label className="text-label-md text-primary mb-2 uppercase tracking-wider">Country *</label>
-                                    <SearchableSelect
-                                        options={COUNTRY_OPTIONS}
-                                        value={formData.country}
-                                        onChange={(v) => setFormData({ ...formData, country: v })}
-                                        placeholder="Type to search country…"
-                                        required
-                                        disabled={busy}
-                                        aria-label="Country"
-                                        emptyLabel="No matching country"
-                                    />
-                                </div>
                             </div>
                         </div>
 
@@ -370,7 +375,7 @@ export function RegistrationForm(props: RegistrationFormProps) {
                                     name="attending"
                                     legend="Are you going to attend?"
                                     value={formData.attending}
-                                    onChange={(next) => setFormData({ ...formData, attending: next })}
+                                    onChange={changeAttending}
                                     disabled={busy}
                                 />
 
@@ -387,66 +392,71 @@ export function RegistrationForm(props: RegistrationFormProps) {
                                         min={MIN_GUESTS}
                                         max={MAX_GUESTS}
                                         step={1}
-                                        value={formData.guests.length}
-                                        onChange={(e) => changeGuestCount(parseInt(e.target.value, 10))}
+                                        value={formData.number_of_guests}
+                                        onChange={(e) => changeGuestCount(e.target.value)}
                                         required
                                         disabled={busy}
                                         className={INPUT_CLASS}
                                     />
                                 </div>
 
-                                {showFoodQuestions && (
-                                    <div className="flex flex-col gap-4">
-                                        <p className="text-label-md text-primary uppercase tracking-wider">Food per person</p>
+                                {formData.attending && (
+                                    <YesNoField
+                                        name="lunch"
+                                        legend="Will you be having lunch?"
+                                        value={formData.lunch}
+                                        onChange={(next) => setFormData({ ...formData, lunch: next })}
+                                        disabled={busy}
+                                    />
+                                )}
 
-                                        {formData.attending && (
-                                            <div className="rounded-lg border border-outline-variant bg-surface px-4 py-3 space-y-4">
-                                                <p className="text-label-md text-primary">You</p>
-                                                <YesNoField
-                                                    name="self_lunch"
-                                                    legend="Will you be having lunch?"
-                                                    value={formData.self_lunch}
-                                                    onChange={(next) => setFormData({ ...formData, self_lunch: next })}
-                                                    disabled={busy}
-                                                />
-                                                {formData.self_lunch && (
-                                                    <FoodChoiceField
-                                                        name="self_preference"
-                                                        value={formData.self_preference}
-                                                        onChange={(next) => setFormData({ ...formData, self_preference: next })}
-                                                        disabled={busy}
-                                                    />
-                                                )}
-                                            </div>
-                                        )}
+                                {guestCount > 0 && (
+                                    <div className="flex flex-col">
+                                        <label htmlFor="guests_eating" className="text-label-md text-primary mb-2 uppercase tracking-wider">
+                                            How many of your guests will have lunch?
+                                        </label>
+                                        <p className="text-label-sm text-on-surface-variant pb-3">Between 0 and {guestCount}.</p>
+                                        <input
+                                            id="guests_eating"
+                                            type="number"
+                                            min={0}
+                                            max={guestCount}
+                                            step={1}
+                                            value={guestsEating}
+                                            onChange={(e) => changeGuestsEating(e.target.value)}
+                                            disabled={busy}
+                                            className={INPUT_CLASS}
+                                        />
+                                    </div>
+                                )}
 
-                                        {formData.guests.map((guest, index) => (
-                                            <div key={index} className="rounded-lg border border-outline-variant bg-surface px-4 py-3 space-y-3">
-                                                <p className="text-label-md text-primary">Guest {index + 1}</p>
-                                                <FoodChoiceField
-                                                    name={`guest_preference_${index}`}
-                                                    value={guest.preference}
-                                                    onChange={(next) => updateGuest(index, { preference: next })}
-                                                    disabled={busy}
-                                                />
-                                            </div>
-                                        ))}
+                                {showFoodQuestion && (
+                                    <div className="flex flex-col gap-3">
+                                        <p className="text-label-md text-primary uppercase tracking-wider">
+                                            Food choice for everyone having lunch
+                                        </p>
+                                        <FoodChoiceField
+                                            name="food_preference"
+                                            value={normalizeFoodPreference(formData.food_preference)}
+                                            onChange={(next) => setFormData({ ...formData, food_preference: next })}
+                                            disabled={busy}
+                                        />
                                     </div>
                                 )}
                             </div>
                         </div>
 
                         <p className="text-label-sm text-on-surface-variant pt-4">
-                            Event fee {feeLabel} per person. Guests always pay and have lunch. You pay the fee only if you
-                            attend and have lunch.
+                            Event fee {feeLabel} per person. Only people who are eating pay the fee. You pay only if you attend and
+                            have lunch.
                         </p>
 
                         {isSeniorSponsored && (
                             <div role="note" className="p-4 rounded-lg border border-jubilee-gold-light bg-secondary-container/30 text-body-sm text-on-secondary-fixed-variant">
                                 <p>
-                                    Your event fee for batches 2021–26 is borne by Alumni Seniors. Guests still pay {feeLabel} each.
-                                    <strong>Please bring your ID card to prove your name</strong>, which should match school records at Event
-                                    Check-in.
+                                    Your event fee for batches 2021–26 is borne by Alumni Seniors. Guests still pay {feeLabel} each when
+                                    eating. <strong>Please bring your ID card to prove your name</strong>, which should match school
+                                    records at Event Check-in.
                                 </p>
                             </div>
                         )}
@@ -455,26 +465,23 @@ export function RegistrationForm(props: RegistrationFormProps) {
                             formData={formData}
                             setFormData={setFormData}
                             busy={busy}
-                            donationRupees={donationRupees}
-                            liveDue={liveDue}
-                            paymentStatus={paymentStatus}
-                            registrationId={registrationId}
+                            money={money}
+                            displayMoney={displayMoney}
+                            formDirty={formDirty}
+                            donationLocked={donationLocked}
+                            paymentRoute={paymentRoute}
+                            setPaymentRoute={setPaymentRoute}
                             onSaveBankReference={onSaveBankReference}
                             displayCurrency={displayCurrency}
                             exchange={exchange}
                         />
 
                         <PaymentSummary
-                            registrationPaise={registrationPaise}
-                            donationPaise={donationPaise}
-                            totalPaise={totalCost}
-                            amountPaidPaise={amountPaid}
-                            duePaise={liveDue}
-                            costDetails={costDetails}
+                            money={displayMoney}
+                            isPreview={formDirty}
                             refundEmail={event?.refund_email}
                             eventTitle={event?.title || 'Event'}
                             fullName={formData.full_name}
-                            registrationCode={registrationCode}
                             displayCurrency={displayCurrency}
                             onCurrencyChange={setDisplayCurrency}
                             exchange={exchange}
@@ -500,31 +507,18 @@ export function RegistrationForm(props: RegistrationFormProps) {
                             >
                                 {saving ? 'Saving…' : hasSavedReg ? 'Save changes' : 'Save registration'}
                             </button>
-                            <button
-                                type="button"
-                                onClick={onPay}
-                                disabled={busy || !canPay}
-                                title={
-                                    !registrationId
-                                        ? 'Save first'
-                                        : formDirty
-                                          ? 'Save your changes before paying'
-                                          : priceDrift
-                                            ? 'Save so the updated amount applies before paying'
-                                            : lastDue <= 0
-                                              ? 'Nothing due'
-                                              : undefined
-                                }
-                                className="flex-1 py-3 rounded-lg bg-secondary-container text-on-secondary-fixed text-label-md uppercase tracking-wider font-bold hover:bg-secondary-fixed disabled:bg-surface-container disabled:text-on-surface-variant transition-all"
-                            >
-                                {paying ? 'Opening payment…' : lastDue > 0 ? `Pay ${formatCostForDisplay(formDirty ? liveDue : lastDue)}` : 'Pay'}
-                            </button>
+
+                            {paymentRoute === 'portal' && (
+                                <button
+                                    type="button"
+                                    onClick={onPayNow}
+                                    disabled={busy || displayMoney.totalDuePaise <= 0}
+                                    className="flex-1 py-3 rounded-lg bg-secondary-container text-on-secondary-fixed text-label-md uppercase tracking-wider font-bold hover:bg-secondary-fixed disabled:bg-surface-container disabled:text-on-surface-variant transition-all"
+                                >
+                                    {payLabel}
+                                </button>
+                            )}
                         </div>
-                        {(formDirty || priceDrift) && registrationId && liveDue > 0 && (
-                            <p className="text-label-sm text-on-surface-variant text-center">
-                                Save changes to unlock Pay for the updated amount.
-                            </p>
-                        )}
                     </form>
 
                     <div className="text-center mt-6">

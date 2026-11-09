@@ -1,6 +1,6 @@
 // components/registration_page/registration-donation.tsx
-// Optional donation block shown above the payment summary. Includes a bank-transfer
-// route for alumni sending money from abroad (foreign remittance, reconciled later).
+// Donation choice and payment route. The amount due shown is `displayMoney`: the saved figure, or a
+// live preview while the form has edits. Saving the reference saves the form first (in the page).
 
 import { useState, type Dispatch, type SetStateAction } from 'react';
 import { formatCostForDisplay } from '@/lib/registration/registration';
@@ -13,7 +13,10 @@ import {
     donationValidationError,
     type DonationOption,
     type FormData,
+    type RegistrationMoney,
 } from '@/lib/registration/types';
+
+export type PaymentRoute = 'portal' | 'bank';
 
 const INPUT_CLASS =
     'px-4 py-3 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:opacity-50';
@@ -22,10 +25,12 @@ export interface DonationSectionProps {
     formData: FormData;
     setFormData: Dispatch<SetStateAction<FormData>>;
     busy: boolean;
-    donationRupees: number;
-    liveDue: number;
-    paymentStatus: string | null;
-    registrationId: string | null;
+    money: RegistrationMoney;
+    displayMoney: RegistrationMoney;
+    formDirty: boolean;
+    donationLocked: boolean;
+    paymentRoute: PaymentRoute;
+    setPaymentRoute: (route: PaymentRoute) => void;
     onSaveBankReference: (reference: string) => Promise<string | null>;
     displayCurrency: DisplayCurrency;
     exchange: ExchangeRateState;
@@ -35,15 +40,16 @@ export function DonationSection({
     formData,
     setFormData,
     busy,
-    donationRupees,
-    liveDue,
-    paymentStatus,
-    registrationId,
+    money,
+    displayMoney,
+    formDirty,
+    donationLocked,
+    paymentRoute,
+    setPaymentRoute,
     onSaveBankReference,
     displayCurrency,
     exchange,
 }: DonationSectionProps) {
-    const [route, setRoute] = useState<'portal' | 'bank'>('portal');
     const validationError = donationValidationError(formData);
 
     function chooseOption(option: DonationOption) {
@@ -63,8 +69,14 @@ export function DonationSection({
         <section className="rounded-lg border border-outline-variant bg-surface p-6 space-y-5">
             <div>
                 <h2 className="text-headline-sm text-primary uppercase tracking-wider">Donation</h2>
-                <p className="text-body-sm text-on-surface-variant mt-1">Additional INR Donation to fund the Event:</p>
+                <p className="text-body-sm text-on-surface-variant mt-1">Additional INR donation to fund the event:</p>
             </div>
+
+            {donationLocked && (
+                <p className="rounded-lg bg-surface-container-low px-4 py-3 text-body-sm text-on-surface">
+                    Your donation is paid. To change it, contact the committee.
+                </p>
+            )}
 
             <div className="flex flex-col gap-3">
                 {DONATION_OPTIONS.map((option) => (
@@ -76,7 +88,7 @@ export function DonationSection({
                                 value={option.value}
                                 checked={formData.donation_option === option.value}
                                 onChange={() => chooseOption(option.value)}
-                                disabled={busy}
+                                disabled={busy || donationLocked}
                                 className="w-4 h-4 accent-primary cursor-pointer disabled:opacity-50"
                             />
                             <span className="text-body-sm text-on-surface">{option.label}</span>
@@ -91,7 +103,7 @@ export function DonationSection({
                                 value={formData.donation_custom}
                                 onChange={(e) => enterCustomAmount(e.target.value)}
                                 placeholder={`Rs. ${DONATION_MIN_RUPEES} – ${DONATION_MAX_RUPEES.toLocaleString('en-IN')}`}
-                                disabled={busy}
+                                disabled={busy || donationLocked}
                                 aria-label="Custom donation amount in rupees"
                                 className={`w-56 ${INPUT_CLASS}`}
                             />
@@ -106,25 +118,14 @@ export function DonationSection({
                 </p>
             )}
 
-            <div className="rounded-lg bg-surface-container-low px-5 py-4">
-                <p className="text-body-md text-on-surface">
-                    Total additional donation{' '}
-                    <span className="font-semibold tabular-nums">Rs. {donationRupees.toLocaleString('en-IN')}</span>{' '}
-                    to be added to total.
-                </p>
-                <p className="text-body-sm text-jubilee-gold-deep font-semibold mt-2">
-                    Your Alumni greatly appreciates your gesture!
-                </p>
-            </div>
-
             <div className="space-y-3">
                 <p className="text-label-md text-primary uppercase tracking-wider">How would you like to pay?</p>
                 <label className="flex items-center gap-3">
                     <input
                         type="radio"
                         name="payment_route"
-                        checked={route === 'portal'}
-                        onChange={() => setRoute('portal')}
+                        checked={paymentRoute === 'portal'}
+                        onChange={() => setPaymentRoute('portal')}
                         className="w-4 h-4 accent-primary cursor-pointer"
                     />
                     <span className="text-body-sm text-on-surface">Pay through this portal</span>
@@ -133,8 +134,8 @@ export function DonationSection({
                     <input
                         type="radio"
                         name="payment_route"
-                        checked={route === 'bank'}
-                        onChange={() => setRoute('bank')}
+                        checked={paymentRoute === 'bank'}
+                        onChange={() => setPaymentRoute('bank')}
                         className="w-4 h-4 accent-primary cursor-pointer"
                     />
                     <span className="text-body-sm text-on-surface">
@@ -143,12 +144,12 @@ export function DonationSection({
                 </label>
             </div>
 
-            {route === 'bank' && (
+            {paymentRoute === 'bank' && (
                 <BankTransferSection
-                    amountDuePaise={liveDue}
+                    amountDuePaise={displayMoney.totalDuePaise}
+                    formDirty={formDirty}
                     busy={busy}
-                    paymentStatus={paymentStatus}
-                    registrationId={registrationId}
+                    paymentStatus={money.paymentStatus}
                     onSaveBankReference={onSaveBankReference}
                     displayCurrency={displayCurrency}
                     exchange={exchange}
@@ -160,9 +161,9 @@ export function DonationSection({
 
 interface BankTransferSectionProps {
     amountDuePaise: number;
+    formDirty: boolean;
     busy: boolean;
     paymentStatus: string | null;
-    registrationId: string | null;
     onSaveBankReference: (reference: string) => Promise<string | null>;
     displayCurrency: DisplayCurrency;
     exchange: ExchangeRateState;
@@ -170,9 +171,9 @@ interface BankTransferSectionProps {
 
 function BankTransferSection({
     amountDuePaise,
+    formDirty,
     busy,
     paymentStatus,
-    registrationId,
     onSaveBankReference,
     displayCurrency,
     exchange,
@@ -182,7 +183,7 @@ function BankTransferSection({
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
 
-    const canSave = Boolean(registrationId) && reference.trim().length > 0 && !saving && !busy;
+    const canSave = reference.trim().length > 0 && !saving && !busy;
     const approxDue = approximateInCurrency(amountDuePaise, displayCurrency, exchange);
 
     async function handleSaveReference() {
@@ -196,7 +197,7 @@ function BankTransferSection({
             setError(saveError);
             return;
         }
-        setMessage('Bank reference saved.');
+        setMessage(formDirty ? 'Form saved and bank reference stored.' : 'Bank reference saved.');
     }
 
     if (amountDuePaise <= 0) {
@@ -208,16 +209,14 @@ function BankTransferSection({
             <div className="text-body-sm text-on-surface">
                 <p>
                     Amount to remit:{' '}
-                    <span className="font-semibold tabular-nums">{formatCostForDisplay(amountDuePaise)}</span> (INR).
+                    <span className="font-semibold tabular-nums">{formatCostForDisplay(amountDuePaise)}</span> (INR)
+                    {formDirty ? ' · preview, saved when you save the reference' : ''}.
                 </p>
                 {approxDue && (
                     <p className="text-on-surface-variant">
                         ≈ {approxDue} {displayCurrency} at the approximate reference rate. Your bank applies its own rate.
                     </p>
                 )}
-                <p className="text-label-sm text-on-surface-variant mt-1">
-                    The display currency is selected in the payment summary below.
-                </p>
             </div>
 
             <div>
@@ -254,7 +253,7 @@ function BankTransferSection({
                         value={reference}
                         onChange={(e) => setReference(e.target.value)}
                         placeholder="e.g. UTR / transaction reference"
-                        disabled={!registrationId || busy || saving}
+                        disabled={busy || saving}
                         className={`flex-1 ${INPUT_CLASS}`}
                     />
                     <button
@@ -266,11 +265,6 @@ function BankTransferSection({
                         {saving ? 'Saving…' : 'Save reference'}
                     </button>
                 </div>
-                {!registrationId && (
-                    <p className="text-label-sm text-on-surface-variant">
-                        Save your registration first, then enter the bank reference.
-                    </p>
-                )}
                 {message && !error && (
                     <p role="status" className="text-body-sm text-on-secondary-fixed-variant">
                         {message}
@@ -285,8 +279,8 @@ function BankTransferSection({
 
             <div className="rounded-lg bg-surface-container-low px-4 py-3 text-body-sm text-on-surface-variant space-y-2">
                 <p>
-                    Payments will be reconciled with the bank remittance and shown as paid once the remittance is
-                    reconciled. Please check back in 3–5 business days.
+                    Payments are reconciled with the bank remittance and shown as paid once it is confirmed. Please check back
+                    in 3–5 business days.
                 </p>
                 <p>
                     Current status: <span className="font-semibold text-on-surface">{paymentStatus || 'pending'}</span>

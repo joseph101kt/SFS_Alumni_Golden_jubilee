@@ -1,6 +1,7 @@
 // app/registration/page.tsx
-// Registration route: owns state, effects, and the save / pay / bank-reference flow.
-// Presentation lives in components/registration_page; shared logic in lib/registration.
+// Registration route. The database is the source of truth for every amount shown when the page
+// loads. When the form has unsaved edits, a live preview replaces those amounts until the next save.
+// Pay and Save reference always save the form first, then act on the saved registration.
 
 'use client';
 
@@ -9,20 +10,18 @@ import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { isPublicEmail, normalizeEmail } from '@/lib/email';
 import { normalizePhoneNumber, phoneValidationError, splitE164, toE164 } from '@/lib/phone';
-import {
-    formatCostForDisplay,
-    getEventCostBreakdown,
-    guestsFromUnknown,
-    MAX_GUESTS,
-    normalizeFoodPreference,
-} from '@/lib/registration/registration';
-import { amountDuePaise } from '@/lib/events/balance';
+import { formatCostForDisplay, isEventAttending, MAX_GUESTS } from '@/lib/registration/registration';
+import { formatLocation, isValidBatch, isValidSection, parseLocation } from '@/lib/registration/registration-fields';
 import { chooseRegistrationEvent } from '@/lib/events/choose-event';
 import { eventIsOpen } from '@/lib/events/open';
 import type { EventCatalog } from '@/lib/events/types';
-import { mergeRegistrationPrefill } from '@/lib/events/existing-registration';
+import {
+    mergeRegistrationPrefill,
+    type ExistingRegistrationRow,
+    type RegistrationPrefill,
+    type RegistrationProfileSnapshot,
+} from '@/lib/events/existing-registration';
 import { openRazorpayCheckout } from '@/lib/payments/checkout-client';
-import { formatLocation, isValidBatch, isValidSection, parseLocation } from '@/lib/registration/registration-fields';
 import {
     AdminNoticeScreen,
     ChooseEventScreen,
@@ -32,50 +31,56 @@ import {
 } from '@/components/registration_page/registration-screens';
 import { RegistrationForm, type RegistrationFormMode } from '@/components/registration_page/registration-form';
 import { RegistrationSuccess } from '@/components/registration_page/registration-success';
+import type { PaymentRoute } from '@/components/registration_page/registration-donation';
+import { previewMoney } from '@/lib/registration/preview';
 import {
     BANK_REFERENCE_ENDPOINT,
     toCheckoutOrder,
     type OrderApiResponse,
-    type SaveRegistrationResponse,
     type VerifyResponse,
 } from '@/lib/registration/payment-types';
 import {
     choicesFingerprint,
-    donationRupeesFor,
+    donationFormFromPaise,
+    donationIntentPaise,
     donationValidationError,
+    EMPTY_FORM,
+    EMPTY_MONEY,
     firstRowOf,
+    moneyFromRegistration,
     parsePreRegistrationRow,
     type AuthProfile,
     type FormData,
     type PreRegistrationData,
+    type RegistrationMoney,
     type RegistrationStep,
     type RegistrationUser,
 } from '@/lib/registration/types';
 
-/** Profile and registration shapes as the merge helper expects them. */
-type ExistingProfile = Parameters<typeof mergeRegistrationPrefill>[0];
-type ExistingRegistration = NonNullable<Parameters<typeof mergeRegistrationPrefill>[1]>;
-
-/** Read-side fields returned by GET /api/registration/event (on top of the merged row). */
-interface RegistrationReadFields {
-    id?: string;
-    amount_paid_paise?: number;
-    amount_due_paise?: number;
-    payment_status?: string;
-    registration_code?: string | null;
-    attending?: boolean;
-    self_lunch?: boolean;
-    self_preference?: string;
-    guests?: unknown;
+/** A saved registration as the server reports it right now. */
+interface LoadedRegistration {
+    id: string;
+    money: RegistrationMoney;
 }
 
-interface EventRegistrationResponse {
-    profile: ExistingProfile;
-    registration?: ExistingRegistration & RegistrationReadFields;
+function formFromPrefill(prefill: RegistrationPrefill): FormData {
+    return {
+        phone_number: prefill.phone_number,
+        full_name: prefill.full_name,
+        last_name: prefill.last_name,
+        batch: prefill.batch,
+        section: prefill.section,
+        city: prefill.city,
+        country: prefill.country,
+        email: prefill.email,
+        attending: prefill.attending,
+        lunch: prefill.lunch,
+        food_preference: prefill.food_preference,
+        number_of_guests: prefill.number_of_guests,
+        guests_eating: prefill.guests_eating,
+        ...donationFormFromPaise(prefill.intended_donation_paise),
+    };
 }
-
-/** The attendance and food choices a saved registration restores into the form. */
-type SavedChoices = Pick<FormData, 'attending' | 'self_lunch' | 'self_preference' | 'guests'>;
 
 export default function RegistrationPage() {
     return (
@@ -88,7 +93,6 @@ export default function RegistrationPage() {
                 Registration is not complete until the payment made and the qr code generated
             </div>
 
-            {/* Suspense handles the inner async content */}
             <Suspense
                 fallback={
                     <div className="py-20 flex items-center justify-center">
@@ -111,30 +115,16 @@ function RegistrationPageInner() {
     const [preRegData, setPreRegData] = useState<PreRegistrationData | null>(null);
     const [phoneIsd, setPhoneIsd] = useState('+91');
     const [phoneNational, setPhoneNational] = useState('');
-    const [formData, setFormData] = useState<FormData>({
-        phone_number: '',
-        full_name: '',
-        last_name: '',
-        section: '',
-        city: '',
-        country: '',
-        email: '',
-        attending: true,
-        self_lunch: true,
-        self_preference: 'veg',
-        guests: [],
-        donation_option: 'zero',
-        donation_custom: '',
-    });
-    const [amountPaid, setAmountPaid] = useState(0);
+    const [formData, setFormData] = useState<FormData>(EMPTY_FORM);
+    /** Amounts as the database last returned them. Never edited in the browser. */
+    const [money, setMoney] = useState<RegistrationMoney>(EMPTY_MONEY);
     const [registrationId, setRegistrationId] = useState<string | null>(null);
-    const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
-    const [registrationCode, setRegistrationCode] = useState<string | null>(null);
-    const [lastDue, setLastDue] = useState(0);
+    /** Fingerprint of the choices as last saved. Differs from the form when edits are unsaved. */
+    const [savedFingerprint, setSavedFingerprint] = useState('');
+    const [paymentRoute, setPaymentRoute] = useState<PaymentRoute>('portal');
     const [saving, setSaving] = useState(false);
     const [paying, setPaying] = useState(false);
     const [saveMessage, setSaveMessage] = useState('');
-    const [savedFingerprint, setSavedFingerprint] = useState('');
     const [event, setEvent] = useState<EventCatalog | null>(null);
     const [choices, setChoices] = useState<EventCatalog[]>([]);
     const [eventLoaded, setEventLoaded] = useState(false);
@@ -227,7 +217,7 @@ function RegistrationPageInner() {
                 section: match.section || prev.section,
                 city: loc.city || prev.city,
                 country: loc.country || prev.country,
-                self_preference: match.food_preference ?? prev.self_preference,
+                food_preference: match.food_preference ?? prev.food_preference,
             }));
             setPreRegData(match);
             setCurrentStep('details');
@@ -290,79 +280,64 @@ function RegistrationPageInner() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Pull saved profile + event registration so "Complete payment" reopens all details.
+    /**
+     * Reads the saved registration and its server-calculated amounts. Used on load, after a save,
+     * and after a payment. Returns null when there is no open registration for this event.
+     */
+    async function loadSavedRegistration(
+        eventId: string,
+        applyToForm: boolean
+    ): Promise<LoadedRegistration | null> {
+        const res = await fetch(`/api/registration/event?eventId=${encodeURIComponent(eventId)}`, {
+            cache: 'no-store',
+        });
+        if (!res.ok) return null;
+
+        const payload = (await res.json().catch(() => ({}))) as {
+            registration?: Record<string, unknown> | null;
+            profile?: RegistrationProfileSnapshot | null;
+        };
+        const reg = payload.registration;
+        if (!reg) {
+            setHasSavedReg(false);
+            setRegistrationId(null);
+            setMoney(EMPTY_MONEY);
+            return null;
+        }
+
+        const id = String(reg.id ?? '');
+        const next = moneyFromRegistration(reg);
+        setRegistrationId(id || null);
+        setMoney(next);
+        setHasSavedReg(true);
+
+        if (applyToForm) {
+            const prefill = mergeRegistrationPrefill(
+                payload.profile ?? null,
+                reg as unknown as ExistingRegistrationRow
+            );
+            const nextForm = formFromPrefill(prefill);
+            setFormData(nextForm);
+            setSavedFingerprint(choicesFingerprint(nextForm));
+            if (prefill.phone_number) {
+                const split = splitE164(prefill.phone_number);
+                setPhoneIsd(split.isd);
+                setPhoneNational(split.national);
+            }
+        }
+
+        if (next.paymentStatus === 'paid' && next.totalDuePaise === 0) {
+            setCurrentStep('success');
+        }
+        return { id, money: next };
+    }
+
     useEffect(() => {
         if (!user?.id || !event?.id || gate !== 'ok') return;
-        let active = true;
-        (async () => {
-            try {
-                const res = await fetch(`/api/registration/event?eventId=${encodeURIComponent(event.id)}`);
-                if (!res.ok || !active) return;
-                const payload = (await res.json().catch(() => ({}))) as Partial<EventRegistrationResponse>;
-                if (!payload.registration || !payload.profile || !active) return;
-
-                const merged = mergeRegistrationPrefill(payload.profile, payload.registration);
-                const reg = payload.registration;
-
-                const savedChoices: SavedChoices = {
-                    attending: reg.attending ?? true,
-                    self_lunch: reg.self_lunch ?? true,
-                    self_preference: normalizeFoodPreference(reg.self_preference),
-                    guests: guestsFromUnknown(reg.guests),
-                };
-
-                setHasSavedReg(true);
-                setRegistrationId(reg.id || null);
-                setRegistrationCode(reg.registration_code || null);
-                setAmountPaid(Math.max(0, Number(reg.amount_paid_paise) || 0));
-                setPaymentStatus(merged.payment_status || null);
-                const due = Math.max(0, Number(reg.amount_due_paise) || 0);
-                setLastDue(due);
-                if ((merged.payment_status === 'paid' || reg.payment_status === 'paid') && due === 0) {
-                    setCurrentStep('success');
-                }
-                setSavedFingerprint(choicesFingerprint({ ...formData, ...savedChoices }));
-                setFormData((prev) => ({
-                    ...prev,
-                    full_name: merged.full_name || prev.full_name,
-                    last_name: merged.last_name || prev.last_name,
-                    email: merged.email || prev.email,
-                    phone_number: merged.phone_number || prev.phone_number,
-                    batch: merged.batch ?? prev.batch,
-                    // Prefer saved registration profile (includes bio-unpacked section).
-                    section: merged.section || prev.section || '',
-                    city: merged.city || prev.city,
-                    country: merged.country || prev.country,
-                    ...savedChoices,
-                }));
-                if (merged.phone_number) {
-                    const split = splitE164(merged.phone_number);
-                    setPhoneIsd(split.isd);
-                    setPhoneNational(split.national);
-                }
-            } catch {
-                // Keep profile/pre-reg prefill if the registration row is unavailable.
-            }
-        })();
-        return () => {
-            active = false;
-        };
-        // formData is intentionally excluded: this loader runs once per user/event.
+        void loadSavedRegistration(event.id, true);
+        // Runs once per user and event. loadSavedRegistration reads no changing state.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user?.id, event?.id, gate]);
-
-    const costBreakdown = getEventCostBreakdown({
-        attending: formData.attending,
-        selfLunch: formData.self_lunch,
-        batch: formData.batch,
-        guestCount: formData.guests.length,
-    });
-
-    const donationRupees = donationRupeesFor(formData);
-    const registrationFeePaise = costBreakdown.totalCost;
-    const donationPaise = donationRupees * 100;
-    const totalCost = registrationFeePaise + donationPaise;
-    const costDetailsText = costBreakdown.details;
 
     function validateRegistrationForm(): { ok: true; e164: string } | { ok: false } {
         const email = normalizeEmail(formData.email);
@@ -391,20 +366,28 @@ function RegistrationPageInner() {
             setError('Select your section (A–D)');
             return { ok: false };
         }
-        if (!formData.city.trim()) {
-            setError('City is required');
-            return { ok: false };
-        }
-        if (!formData.country.trim()) {
-            setError('Country is required');
+        if (!formData.city.trim() || !formData.country.trim()) {
+            setError('City and country are required');
             return { ok: false };
         }
         if (!formatLocation(formData.city, formData.country)) {
             setError('City and country are required');
             return { ok: false };
         }
-        if (formData.guests.length > MAX_GUESTS) {
+        if (
+            !Number.isInteger(formData.number_of_guests) ||
+            formData.number_of_guests < 0 ||
+            formData.number_of_guests > MAX_GUESTS
+        ) {
             setError(`You can register up to ${MAX_GUESTS} guests`);
+            return { ok: false };
+        }
+        if (formData.guests_eating < 0 || formData.guests_eating > formData.number_of_guests) {
+            setError('Guests eating cannot be more than the number of guests');
+            return { ok: false };
+        }
+        if (!isEventAttending(formData.attending, formData.number_of_guests)) {
+            setError('Choose at least one person to attend: you or a guest');
             return { ok: false };
         }
         const donationError = donationValidationError(formData);
@@ -419,8 +402,8 @@ function RegistrationPageInner() {
         return { ok: true, e164 };
     }
 
-    /** Persist only, never opens Checkout. Returns the new amount due, or null if save failed. */
-    async function saveRegistration(e?: FormEvent): Promise<number | null> {
+    /** Writes the form to the database, then reloads the saved amounts. Never opens checkout. */
+    async function saveRegistration(e?: FormEvent): Promise<LoadedRegistration | null> {
         e?.preventDefault();
         if (!user || saving || paying || !event) return null;
 
@@ -435,7 +418,7 @@ function RegistrationPageInner() {
         }
 
         try {
-            const statusRes = await fetch('/api/registration/event', {
+            const res = await fetch('/api/registration/event', {
                 method: 'POST',
                 headers: { 'content-type': 'application/json' },
                 body: JSON.stringify({
@@ -448,46 +431,35 @@ function RegistrationPageInner() {
                     city: formData.city.trim(),
                     country: formData.country.trim(),
                     attending: formData.attending,
-                    self_lunch: formData.self_lunch,
-                    self_preference: formData.self_preference,
-                    guests: formData.guests,
-                    number_of_guests: formData.guests.length,
-                    donation_paise: donationPaise,
+                    lunch: formData.lunch,
+                    food_preference: formData.food_preference,
+                    number_of_guests: formData.number_of_guests,
+                    guests_eating: formData.guests_eating,
+                    intended_donation_paise: donationIntentPaise(formData),
                 }),
             });
-            const statusPayload = (await statusRes.json().catch(() => ({}))) as SaveRegistrationResponse & {
-                registration_code?: string | null;
-            };
-            if (!statusRes.ok) {
-                setError(statusPayload.error || 'Could not save registration');
+            const payload = (await res.json().catch(() => ({}))) as { error?: string };
+            if (!res.ok) {
+                setError(payload.error || 'Could not save registration');
                 setSaving(false);
                 return null;
             }
 
-            const regId = String(statusPayload.id || registrationId || '');
-            const paidNow = Math.max(0, Number(statusPayload.amount_paid_paise) || 0);
-            const dueNow = Math.max(
-                0,
-                Number(statusPayload.amount_due_paise) ??
-                    amountDuePaise(Number(statusPayload.total_cost_paise) || totalCost, paidNow)
-            );
-            setRegistrationId(regId || null);
-            setAmountPaid(paidNow);
-            setPaymentStatus(String(statusPayload.payment_status || ''));
-            setLastDue(dueNow);
-            setHasSavedReg(true);
+            const loaded = await loadSavedRegistration(event.id, false);
+            if (!loaded) {
+                setError('Saved, but the amounts could not be reloaded. Refresh the page.');
+                setSaving(false);
+                return null;
+            }
+
             setSavedFingerprint(choicesFingerprint(formData));
             setSaveMessage(
-                dueNow > 0
-                    ? `Saved. Amount due ${formatCostForDisplay(dueNow)}. Tap Pay when ready.`
-                    : 'Saved. Your registration is up to date.'
+                loaded.money.totalDuePaise > 0
+                    ? `Saved. Amount due ${formatCostForDisplay(loaded.money.totalDuePaise)}.`
+                    : 'Saved. Nothing is due.'
             );
             setSaving(false);
-            if (dueNow === 0 && statusPayload.payment_status === 'paid') {
-                setRegistrationCode(statusPayload.registration_code ?? null);
-                setCurrentStep('success');
-            }
-            return dueNow;
+            return loaded;
         } catch {
             setError('Could not save registration. Please try again.');
             setSaving(false);
@@ -495,34 +467,24 @@ function RegistrationPageInner() {
         }
     }
 
-    /** Pay the due amount only. Uses the already-saved registration and does not re-save. */
-    async function payDue(opts?: { due?: number; alreadySaved?: boolean }) {
-        if (!user || saving || paying) return;
+    /** Pays the saved registration's total (fee plus donation) in one Razorpay order. */
+    async function payDue(regId: string) {
+        if (!user || paying || !event?.id) return;
+        const eventId = event.id;
+
         setError('');
         setSaveMessage('');
-        const due = opts?.due ?? lastDue;
-
-        if (!registrationId) {
-            setError('Save your registration first, then pay.');
-            return;
-        }
-        if (!opts?.alreadySaved && choicesFingerprint(formData) !== savedFingerprint) {
-            setError('You have unsaved changes. Save first, then pay.');
-            return;
-        }
-        if (due <= 0) {
-            setError('Nothing due right now.');
-            return;
-        }
-
         setPaying(true);
+
         try {
             const orderRes = await fetch('/api/payments/create-order', {
                 method: 'POST',
                 headers: { 'content-type': 'application/json' },
-                body: JSON.stringify({ registrationId }),
+                body: JSON.stringify({ registrationId: regId }),
             });
-            const orderPayload = (await orderRes.json().catch(() => ({}))) as OrderApiResponse;
+            const orderPayload = (await orderRes.json().catch(() => ({}))) as OrderApiResponse & {
+                skipCheckout?: boolean;
+            };
 
             if (orderRes.status === 503 || orderPayload.configured === false) {
                 setError(
@@ -533,18 +495,15 @@ function RegistrationPageInner() {
                 return;
             }
 
-            if (orderRes.ok && orderPayload.skipCheckout) {
-                setLastDue(0);
-                setPaymentStatus('paid');
-                setRegistrationCode(orderPayload.registration_code || null);
-                setAmountPaid(Math.max(0, Number(orderPayload.amount_paid_paise) || amountPaid));
+            if (!orderRes.ok) {
+                setError(orderPayload.error || 'Could not start payment. Your registration is still saved.');
                 setPaying(false);
-                setCurrentStep('success');
                 return;
             }
 
-            if (!orderRes.ok) {
-                setError(orderPayload.error || 'Could not start payment. Your registration is still saved.');
+            // Nothing owed online: the server settled it, so reload the saved amounts.
+            if (orderPayload.skipCheckout) {
+                await loadSavedRegistration(eventId, false);
                 setPaying(false);
                 return;
             }
@@ -579,7 +538,7 @@ function RegistrationPageInner() {
                 method: 'POST',
                 headers: { 'content-type': 'application/json' },
                 body: JSON.stringify({
-                    registrationId,
+                    registrationId: regId,
                     razorpay_order_id: checkoutResult.razorpay_order_id,
                     razorpay_payment_id: checkoutResult.razorpay_payment_id,
                     razorpay_signature: checkoutResult.razorpay_signature,
@@ -587,36 +546,51 @@ function RegistrationPageInner() {
             });
             const verifyPayload = (await verifyRes.json().catch(() => ({}))) as VerifyResponse;
             if (!verifyRes.ok) {
-                setError((verifyPayload.error || 'Payment could not be verified') + ' Your registration is still saved.');
+                setError(
+                    (verifyPayload.error || 'Payment could not be verified') + ' Your registration is still saved.'
+                );
                 setPaying(false);
                 return;
             }
-            setAmountPaid(Math.max(0, Number(verifyPayload.amount_paid_paise) || amountPaid));
-            setLastDue(Math.max(0, Number(verifyPayload.amount_due_paise) || 0));
-            setPaymentStatus(String(verifyPayload.payment_status || 'paid'));
-            if (verifyPayload.registration_code) setRegistrationCode(String(verifyPayload.registration_code));
+
+            const after = await loadSavedRegistration(eventId, false);
+            if (after && after.money.totalDuePaise > 0) {
+                setSaveMessage(`Payment received. ${formatCostForDisplay(after.money.totalDuePaise)} still due.`);
+            }
             setPaying(false);
-            setCurrentStep('success');
         } catch {
             setError('Payment failed. Your registration is still saved. Tap Pay to try again.');
             setPaying(false);
         }
     }
 
-    async function savePartySize() {
-        const due = await saveRegistration();
-        if (due == null) return;
-        if (due > 0) await payDue({ due, alreadySaved: true });
+    /** Pay button: save the form first, then pay what the saved registration says is due. */
+    async function payNow() {
+        const loaded = await saveRegistration();
+        if (!loaded) return;
+        if (loaded.money.totalDuePaise > 0) await payDue(loaded.id);
     }
 
-    /** Stores a foreign-remittance bank reference. Returns an error message, or null on success. */
+    /** Success screen button: same as Pay. */
+    async function savePartySize() {
+        await payNow();
+    }
+
+    /** Save reference: save the form first if needed, then store the reference on the saved registration. */
     async function saveBankReference(reference: string): Promise<string | null> {
-        if (!registrationId) return 'Save your registration first, then add the bank reference.';
+        let regId = registrationId;
+        if (formDirty || !regId) {
+            const loaded = await saveRegistration();
+            if (!loaded) return 'Fix the errors on the form, then save the reference again.';
+            regId = loaded.id;
+        }
+        if (!regId) return 'Could not find your registration. Please try again.';
+
         try {
             const res = await fetch(BANK_REFERENCE_ENDPOINT, {
                 method: 'POST',
                 headers: { 'content-type': 'application/json' },
-                body: JSON.stringify({ registrationId, bank_reference: reference }),
+                body: JSON.stringify({ registrationId: regId, bank_reference: reference }),
             });
             if (!res.ok) {
                 const payload = (await res.json().catch(() => ({}))) as { error?: string };
@@ -638,7 +612,7 @@ function RegistrationPageInner() {
             section: match.section || '',
             city: loc.city,
             country: loc.country,
-            self_preference: match.food_preference ?? 'veg',
+            food_preference: match.food_preference ?? 'veg',
         }));
         setCurrentStep('details');
     }
@@ -648,17 +622,16 @@ function RegistrationPageInner() {
         setCurrentStep('details');
     }
 
-    const liveDue = amountDuePaise(totalCost, amountPaid);
     const formDirty = !savedFingerprint || choicesFingerprint(formData) !== savedFingerprint;
-    const priceDrift = Boolean(savedFingerprint) && liveDue !== lastDue;
-    const canPay = Boolean(registrationId) && lastDue > 0 && !formDirty && !priceDrift;
+    // Shown amounts: the database figures until the form is edited, then a live preview.
+    const displayMoney = formDirty ? previewMoney(money, formData) : money;
+    const donationLocked = money.donationPaymentStatus === 'paid';
     const busy = saving || paying;
-    const formMode: RegistrationFormMode =
-        paymentStatus === 'paid' || paymentStatus === 'partial' || hasSavedReg
-            ? paymentStatus === 'paid' && liveDue === 0
-                ? 'update'
-                : 'pay'
-            : 'new';
+    const formMode: RegistrationFormMode = hasSavedReg
+        ? money.totalDuePaise > 0
+            ? 'pay'
+            : 'update'
+        : 'new';
 
     if (loading || !eventLoaded) {
         return (
@@ -701,30 +674,22 @@ function RegistrationPageInner() {
                 event={event}
                 formMode={formMode}
                 hasSavedReg={hasSavedReg}
-                paymentStatus={paymentStatus}
                 busy={busy}
                 saving={saving}
                 paying={paying}
-                totalCost={totalCost}
-                registrationPaise={registrationFeePaise}
-                donationPaise={donationPaise}
-                donationRupees={donationRupees}
-                costDetails={costDetailsText}
-                amountPaid={amountPaid}
-                liveDue={liveDue}
-                lastDue={lastDue}
-                canPay={canPay}
+                money={money}
+                displayMoney={displayMoney}
                 formDirty={formDirty}
-                priceDrift={priceDrift}
-                registrationId={registrationId}
-                registrationCode={registrationCode}
+                donationLocked={donationLocked}
+                paymentRoute={paymentRoute}
+                setPaymentRoute={setPaymentRoute}
                 saveMessage={saveMessage}
                 error={error}
                 onSaveBankReference={saveBankReference}
                 onSubmit={(e) => {
                     void saveRegistration(e);
                 }}
-                onPay={() => void payDue()}
+                onPayNow={() => void payNow()}
             />
         );
     }
@@ -737,14 +702,7 @@ function RegistrationPageInner() {
                 event={event}
                 busy={busy}
                 formDirty={formDirty}
-                priceDrift={priceDrift}
-                liveDue={liveDue}
-                lastDue={lastDue}
-                totalCost={totalCost}
-                amountPaid={amountPaid}
-                paymentStatus={paymentStatus}
-                registrationCode={registrationCode}
-                costDetails={costDetailsText}
+                money={money}
                 error={error}
                 signedIn={Boolean(user)}
                 onSavePartySize={() => void savePartySize()}
