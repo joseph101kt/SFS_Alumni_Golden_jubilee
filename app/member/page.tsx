@@ -1,3 +1,8 @@
+// app/member/page.tsx
+// Member home. The next-step button is decided from the server's amounts: a registration needs
+// action only when money is still due and the committee has not confirmed it. A confirmed
+// registration never shows a pay or continue prompt.
+
 'use client';
 
 import Link from 'next/link';
@@ -10,6 +15,22 @@ import { registrationPath } from '@/lib/events/choose-event';
 import type { EventCatalog } from '@/lib/events/types';
 import { primaryNextAction, type PrimaryNextAction } from '@/lib/portal/next-action';
 import { firstNameFromFullName } from '@/lib/portal/welcome';
+
+/** Shape of one saved registration as GET /api/registration/event returns it. */
+interface SavedRegistrationSummary {
+  total_due_paise?: number;
+  committee_confirmed?: boolean;
+  payment_status?: string;
+}
+
+/**
+ * Whether a saved registration still needs the member to act. Confirmed registrations never do.
+ * Otherwise action is needed only while the server reports money still due.
+ */
+function needsAction(reg: SavedRegistrationSummary): boolean {
+  if (reg.committee_confirmed === true) return false;
+  return Math.max(0, Number(reg.total_due_paise) || 0) > 0;
+}
 
 export default function MemberPage() {
   const [firstName, setFirstName] = useState('friend');
@@ -53,11 +74,10 @@ export default function MemberPage() {
             cache: 'no-store',
           });
           if (!regRes.ok || !active) continue;
-          const payload = await regRes.json();
+          const payload = (await regRes.json()) as { registration?: SavedRegistrationSummary | null };
           if (!payload.registration) continue;
           hasRegistration = true;
-          const status = String(payload.registration.payment_status || '');
-          if (status === 'pending' || status === 'partial') {
+          if (needsAction(payload.registration)) {
             anyUnpaid = true;
             if (!continueHref) continueHref = registrationPath(event.id);
           }

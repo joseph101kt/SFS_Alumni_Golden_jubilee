@@ -1,5 +1,7 @@
 // components/registration_page/registration-success.tsx
-// Confirmation screen. The code appears only when the server has issued one. Amounts come from `money`.
+// Confirmation screen. It shows the registration code once the registration is confirmed, either
+// by full payment or by the committee's manual verification. Confirmed registrations never ask for
+// payment. Amounts come from `money`, which the server returned.
 
 import type { Dispatch, SetStateAction } from 'react';
 import BackHomeLink from '@/components/back-home-link';
@@ -16,6 +18,8 @@ export interface RegistrationSuccessProps {
     busy: boolean;
     formDirty: boolean;
     money: RegistrationMoney;
+    /** True when the committee has verified the registration. Overrides any balance still shown. */
+    committeeConfirmed: boolean;
     error: string;
     signedIn: boolean;
     onSavePartySize: () => void;
@@ -23,10 +27,23 @@ export interface RegistrationSuccessProps {
 }
 
 export function RegistrationSuccess(props: RegistrationSuccessProps) {
-    const { formData, setFormData, busy, formDirty, money, error, signedIn, onSavePartySize, onEditDetails } = props;
+    const {
+        formData,
+        setFormData,
+        busy,
+        formDirty,
+        money,
+        committeeConfirmed,
+        error,
+        signedIn,
+        onSavePartySize,
+        onEditDetails,
+    } = props;
 
-    const isConfirmed = money.paymentStatus === 'paid' && money.totalDuePaise === 0;
+    const isPaidInFull = money.paymentStatus === 'paid' && money.totalDuePaise === 0;
+    const isConfirmed = committeeConfirmed || isPaidInFull;
     const code = money.registrationCode;
+    const canPayMore = !isConfirmed && !formDirty && money.totalDuePaise > 0;
 
     function changeGuestCount(raw: string) {
         const next = Math.min(MAX_GUESTS, Math.max(MIN_GUESTS, parseInt(raw, 10) || 0));
@@ -42,7 +59,9 @@ export function RegistrationSuccess(props: RegistrationSuccessProps) {
             <div className="w-full max-w-lg text-center">
                 <div className="bg-surface-paper rounded-2xl shadow-lg p-8 border border-surface-container-low">
                     <div className="mb-6">
-                        <span className="material-symbols-outlined text-[64px] text-green-600 mx-auto block">check_circle</span>
+                        <span className="material-symbols-outlined text-[64px] text-green-600 mx-auto block">
+                            check_circle
+                        </span>
                     </div>
 
                     <h1 className="text-headline-lg text-primary mb-3">
@@ -54,6 +73,12 @@ export function RegistrationSuccess(props: RegistrationSuccessProps) {
                             {money.totalDuePaise > 0
                                 ? `Amount due ${formatCostForDisplay(money.totalDuePaise)}.`
                                 : 'Your registration is saved. Your registration ID appears once payment is confirmed.'}
+                        </p>
+                    )}
+
+                    {isConfirmed && committeeConfirmed && !isPaidInFull && (
+                        <p className="text-body-sm text-on-surface-variant mb-6">
+                            The committee has confirmed your registration. No further payment is needed.
                         </p>
                     )}
 
@@ -89,7 +114,7 @@ export function RegistrationSuccess(props: RegistrationSuccessProps) {
                                 {busy ? 'Saving…' : 'Save changes'}
                             </button>
                         )}
-                        {!formDirty && money.totalDuePaise > 0 && (
+                        {canPayMore && (
                             <button
                                 type="button"
                                 onClick={onSavePartySize}
@@ -99,13 +124,15 @@ export function RegistrationSuccess(props: RegistrationSuccessProps) {
                                 {busy ? 'Working…' : `Pay ${formatCostForDisplay(money.totalDuePaise)}`}
                             </button>
                         )}
-                        <button
-                            type="button"
-                            onClick={onEditDetails}
-                            className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-lg border border-outline-variant text-primary text-label-md uppercase tracking-wider transition-all cursor-pointer"
-                        >
-                            Edit attendance, lunch or guests
-                        </button>
+                        {!isConfirmed && (
+                            <button
+                                type="button"
+                                onClick={onEditDetails}
+                                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-lg border border-outline-variant text-primary text-label-md uppercase tracking-wider transition-all cursor-pointer"
+                            >
+                                Edit attendance, lunch or guests
+                            </button>
+                        )}
                         <BackHomeLink
                             signedIn={signedIn}
                             showIcon={false}

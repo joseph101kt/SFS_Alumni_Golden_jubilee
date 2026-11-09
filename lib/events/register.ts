@@ -43,7 +43,7 @@ import { createAdminClient } from '@/lib/supabase-admin';
 type AdminClient = ReturnType<typeof createAdminClient>;
 
 const REG_SELECT =
-  'id,event_id,number_of_guests,guests_eating,attending,lunch,food_preference,phone_number,payment_status,total_cost_paise,amount_paid_paise,donation_id,core_committee_manually_verified';
+  'id,event_id,number_of_guests,guests_eating,attending,lunch,food_preference,phone_number,payment_status,total_cost_paise,amount_paid_paise,donation_id,core_committee_manually_verified,bank_reference';
 
 type RegistrationRow = {
   id: string;
@@ -59,6 +59,7 @@ type RegistrationRow = {
   amount_paid_paise: number;
   donation_id: string | null;
   core_committee_manually_verified: boolean | null;
+  bank_reference: string | null;
 };
 
 type ExistingRow = {
@@ -238,7 +239,19 @@ export async function getAccountRegistrationForEvent(
 
   const donation = await loadDonation(admin, reg.donation_id);
   const donationDue = donationDuePaise(donation);
-  const registrationCode = await readRegistrationCode(admin as unknown as RegistrationCodeAdmin, reg.id);
+
+  // A committee verification can be set directly in the database. Reading the registration
+  // applies the same code rule as every other path, so the code appears without a save.
+  const verified = Boolean(reg.core_committee_manually_verified);
+  const registrationCode = await issueRegistrationCodeIfEligible(admin, reg.id, {
+    paymentStatus: reg.payment_status,
+    donationDuePaise: donationDue,
+    verified,
+  });
+
+  // A verified registration is confirmed by the committee. Its balance no longer blocks the QR,
+  // so the screens treat it as settled and show the code.
+  const committeeConfirmed = verified && registrationCode !== null;
 
   return {
     status: 200,
@@ -249,7 +262,8 @@ export async function getAccountRegistrationForEvent(
         intended_donation_paise: donation?.amount_paise ?? 0,
         donation_payment_status: donation?.payment_status ?? null,
         donation_due_paise: donationDue,
-        total_due_paise: feeDue + donationDue,
+        total_due_paise: committeeConfirmed ? 0 : feeDue + donationDue,
+        committee_confirmed: committeeConfirmed,
         registration_code: registrationCode,
       },
       profile,

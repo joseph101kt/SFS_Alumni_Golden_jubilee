@@ -1,7 +1,8 @@
 // app/registration/page.tsx
-// Registration route. The database is the source of truth for every amount shown when the page
-// loads. When the form has unsaved edits, a live preview replaces those amounts until the next save.
-// Pay and Save reference always save the form first, then act on the saved registration.
+// Registration route. The database is the source of truth for every amount shown on load.
+// When the committee has verified a registration, the server reports committee_confirmed and the
+// page shows the confirmed state with the registration code, and no payment is asked for.
+// Pay and Save reference save the form first, then act on the saved registration.
 
 'use client';
 
@@ -61,6 +62,7 @@ import {
 interface LoadedRegistration {
     id: string;
     money: RegistrationMoney;
+    committeeConfirmed: boolean;
 }
 
 function formFromPrefill(prefill: RegistrationPrefill): FormData {
@@ -118,6 +120,7 @@ function RegistrationPageInner() {
     const [formData, setFormData] = useState<FormData>(EMPTY_FORM);
     /** Amounts as the database last returned them. Never edited in the browser. */
     const [money, setMoney] = useState<RegistrationMoney>(EMPTY_MONEY);
+    const [committeeConfirmed, setCommitteeConfirmed] = useState(false);
     const [registrationId, setRegistrationId] = useState<string | null>(null);
     /** Fingerprint of the choices as last saved. Differs from the form when edits are unsaved. */
     const [savedFingerprint, setSavedFingerprint] = useState('');
@@ -302,13 +305,16 @@ function RegistrationPageInner() {
             setHasSavedReg(false);
             setRegistrationId(null);
             setMoney(EMPTY_MONEY);
+            setCommitteeConfirmed(false);
             return null;
         }
 
         const id = String(reg.id ?? '');
         const next = moneyFromRegistration(reg);
+        const confirmed = reg.committee_confirmed === true;
         setRegistrationId(id || null);
         setMoney(next);
+        setCommitteeConfirmed(confirmed);
         setHasSavedReg(true);
 
         if (applyToForm) {
@@ -326,10 +332,11 @@ function RegistrationPageInner() {
             }
         }
 
-        if (next.paymentStatus === 'paid' && next.totalDuePaise === 0) {
+        // Confirmed by the committee, or fully paid: the success screen with the code.
+        if (confirmed || (next.paymentStatus === 'paid' && next.totalDuePaise === 0)) {
             setCurrentStep('success');
         }
-        return { id, money: next };
+        return { id, money: next, committeeConfirmed: confirmed };
     }
 
     useEffect(() => {
@@ -568,6 +575,7 @@ function RegistrationPageInner() {
     async function payNow() {
         const loaded = await saveRegistration();
         if (!loaded) return;
+        if (loaded.committeeConfirmed) return;
         if (loaded.money.totalDuePaise > 0) await payDue(loaded.id);
     }
 
@@ -703,6 +711,7 @@ function RegistrationPageInner() {
                 busy={busy}
                 formDirty={formDirty}
                 money={money}
+                committeeConfirmed={committeeConfirmed}
                 error={error}
                 signedIn={Boolean(user)}
                 onSavePartySize={() => void savePartySize()}

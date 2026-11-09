@@ -1,4 +1,9 @@
 // components/member-venue-pass.tsx
+// Entry pass shown on the member home. Every figure comes from the server's saved registration:
+// attendance, guest counts, the shared food choice, the total still due, and the registration code.
+// A registration counts as confirmed when it is fully paid or the committee has verified it.
+// A confirmed registration shows the QR and no payment prompt.
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -9,13 +14,16 @@ import { registrationPath } from '@/lib/events/choose-event';
 import { venuePassSummary } from '@/lib/events/venue-pass';
 import type { EventCatalog } from '@/lib/events/types';
 
+/** One saved registration as GET /api/registration/event returns it. */
 type Registration = {
   attending: boolean;
-  self_lunch: boolean;
-  self_preference: string | null;
-  guests?: unknown;
+  lunch: boolean;
+  food_preference: string | null;
+  number_of_guests: number | null;
+  guests_eating: number | null;
   payment_status: string;
-  amount_due_paise?: number;
+  total_due_paise?: number;
+  committee_confirmed?: boolean;
   registration_code?: string | null;
 };
 
@@ -142,19 +150,27 @@ export default function MemberVenuePass({ mode = 'full' }: { mode?: 'full' | 'pa
   return (
     <div id="venue-pass" className={`space-y-4 scroll-mt-28 ${passOnly ? '' : 'mb-6'}`}>
       {passes.map((pass) => {
+        const reg = pass.registration;
+        const duePaise = Math.max(0, Number(reg.total_due_paise) || 0);
+        // Confirmed by the committee, or nothing left to pay. Both mean the pass is valid.
+        const confirmed = reg.committee_confirmed === true || (reg.payment_status === 'paid' && duePaise === 0);
+
         const summary = venuePassSummary({
-          attending: pass.registration.attending !== false,
-          self_lunch: pass.registration.self_lunch !== false,
-          self_preference: pass.registration.self_preference,
-          guests: pass.registration.guests,
-          payment_status: pass.registration.payment_status,
-          amount_due_paise: Math.max(0, Number(pass.registration.amount_due_paise) || 0),
-          registration_code: pass.registration.registration_code,
+          attending: reg.attending !== false,
+          lunch: reg.lunch !== false,
+          food_preference: reg.food_preference,
+          number_of_guests: reg.number_of_guests,
+          guests_eating: reg.guests_eating,
+          payment_status: confirmed ? 'paid' : reg.payment_status,
+          total_due_paise: confirmed ? 0 : duePaise,
+          registration_code: reg.registration_code,
         });
+
         const facts: Array<[string, string]> = [
           ['People', String(summary.people)],
           ['Lunch', summary.meals],
         ];
+
         return (
           <section
             key={pass.eventId}
@@ -163,16 +179,18 @@ export default function MemberVenuePass({ mode = 'full' }: { mode?: 'full' | 'pa
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-label-sm uppercase tracking-[0.16em] text-jubilee-gold-deep font-bold">
-                {summary.paid ? 'Entry pass' : 'Registration'}
+                {confirmed ? 'Entry pass' : 'Registration'}
               </p>
               <p
                 className={`rounded-full px-3 py-1 text-label-sm font-bold ${
-                  summary.paid ? 'bg-secondary-container text-on-secondary-fixed' : 'bg-error-container text-error'
+                  confirmed ? 'bg-secondary-container text-on-secondary-fixed' : 'bg-error-container text-error'
                 }`}
               >
-                {summary.paid
-                  ? 'Paid'
-                  : `Due ${formatCostForDisplay(pass.registration.amount_due_paise || 0)}`}
+                {confirmed
+                  ? reg.committee_confirmed
+                    ? 'Confirmed'
+                    : 'Paid'
+                  : `Due ${formatCostForDisplay(duePaise)}`}
               </p>
             </div>
             <h2 className="text-headline-sm text-primary mt-3">{pass.eventTitle}</h2>
@@ -214,7 +232,7 @@ export default function MemberVenuePass({ mode = 'full' }: { mode?: 'full' | 'pa
                   </p>
                 )}
               </div>
-            ) : summary.paid ? (
+            ) : confirmed ? (
               <p className="mt-5 text-body-sm text-on-surface-variant">
                 Your registration ID will appear here once it is issued.
               </p>
@@ -222,21 +240,21 @@ export default function MemberVenuePass({ mode = 'full' }: { mode?: 'full' | 'pa
               <p className="mt-5 text-body-sm text-error">Complete payment to unlock your entry pass QR.</p>
             )}
 
-            {!passOnly && (
-              <Link
-                href={registrationPath(pass.eventId)}
-                className="inline-flex mt-5 min-h-11 items-center px-5 py-3 rounded-lg bg-primary text-white text-label-md"
-              >
-                {summary.paid ? 'Update registration' : 'Complete payment'}
-              </Link>
-            )}
-
-            {passOnly && !summary.paid && (
+            {!confirmed && (
               <Link
                 href={registrationPath(pass.eventId)}
                 className="inline-flex mt-5 min-h-11 items-center px-5 py-3 rounded-lg bg-primary text-white text-label-md"
               >
                 Complete payment
+              </Link>
+            )}
+
+            {confirmed && !passOnly && (
+              <Link
+                href={registrationPath(pass.eventId)}
+                className="inline-flex mt-5 min-h-11 items-center px-5 py-3 rounded-lg border border-outline-variant text-primary text-label-md"
+              >
+                View registration
               </Link>
             )}
           </section>
