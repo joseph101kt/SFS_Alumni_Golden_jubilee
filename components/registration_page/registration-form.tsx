@@ -3,7 +3,7 @@
 // Amounts shown are `displayMoney` (saved, or a live preview while edited). The Pay button is
 // hidden when the bank-transfer route is selected.
 
-import { useState, type Dispatch, type FormEvent, type SetStateAction } from 'react';
+import { useState, type Dispatch, type FormEvent, type SetStateAction ,type KeyboardEvent } from 'react';
 import BackHomeLink from '@/components/back-home-link';
 import SearchableSelect from '@/components/searchable-select';
 import {
@@ -232,7 +232,7 @@ export function RegistrationForm(props: RegistrationFormProps) {
                         </p>
                     )}
 
-                    <form onSubmit={onSubmit} className="space-y-6">
+                    <form onSubmit={onSubmit} onKeyDown={preventEnterSubmit}  className="space-y-6">
                         {/* Personal information */}
                         <div>
                             <h2 className="text-headline-sm text-primary mb-4 uppercase tracking-wider">Personal Information</h2>
@@ -528,4 +528,12 @@ export function RegistrationForm(props: RegistrationFormProps) {
             </div>
         </div>
     );
+}
+
+function preventEnterSubmit(event: KeyboardEvent<HTMLFormElement>) {
+    if (event.key !== 'Enter') return;
+    const target = event.target as HTMLElement;
+    // Let the Enter key work normally on the submit buttons themselves.
+    if (target instanceof HTMLButtonElement) return;
+    event.preventDefault();
 }

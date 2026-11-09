@@ -29,7 +29,8 @@ Run in SQL Editor, **filename order**:
 23. `20261101_push_and_broadcasts.sql`
 24. `20261107_registration_self_lunch.sql`
 25. `20261108120000_event_registrations_bank_ref_core_verify.sql`
-26. `20261109130000_gate_partial_checkin.sql`
+26. `20261109120000_jubilee_status_from_registrations.sql`
+27. `20261109130000_gate_partial_checkin.sql`
 
 ## 2. Data — `02_data/`
 
