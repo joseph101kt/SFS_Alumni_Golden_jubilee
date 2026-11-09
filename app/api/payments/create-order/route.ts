@@ -1,8 +1,18 @@
+// app/api/payments/create-order/route.ts
+// Creates one Razorpay order for everything still due on a registration: the event fee plus
+// the linked donation. Both amounts are computed here from the database, never from the browser.
+// The same order id is stored on the registration and on its donation, so verify and the
+// webhook can find both.
+
 import { NextResponse } from 'next/server';
 import { getCurrentAccount } from '@/lib/auth/request';
 import { amountDuePaise, OPEN_PAYMENT_STATUSES } from '@/lib/events/balance';
 import { repriceEventRegistrations } from '@/lib/events/reprice';
-import { applyRegistrationPayment } from '@/lib/events/mark-paid';
+import {
+  applyRegistrationPayment,
+  donationDuePaise,
+  loadDonation,
+} from '@/lib/events/mark-paid';
 import {
   getRazorpayClient,
   isRazorpayConfigured,
@@ -10,6 +20,9 @@ import {
   razorpayKeysAligned,
 } from '@/lib/payments/razorpay';
 import { createAdminClient } from '@/lib/supabase-admin';
+
+/** Razorpay refuses orders below ₹1. */
+const MIN_ONLINE_PAISE = 100;
 
 export async function POST(request: Request) {
   const me = await getCurrentAccount();
@@ -46,9 +59,12 @@ export async function POST(request: Request) {
   }
 
   const admin = createAdminClient();
+  const registrationSelect =
+    'id,event_id,account_id,payment_status,total_cost_paise,amount_paid_paise,donation_id';
+
   const { data: reg, error } = await admin
     .from('event_registrations')
-    .select('id,event_id,account_id,payment_status,total_cost_paise,amount_paid_paise')
+    .select(registrationSelect)
     .eq('id', registrationId)
     .eq('account_id', me.id)
     .in('payment_status', [...OPEN_PAYMENT_STATUSES])
@@ -58,33 +74,40 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Registration not found' }, { status: 404 });
   }
 
+  // Bring the fee up to date with the current rule before charging anything.
   await repriceEventRegistrations(String(reg.event_id || ''));
+
   const { data: priced } = await admin
     .from('event_registrations')
-    .select('id,total_cost_paise,amount_paid_paise,payment_status')
+    .select(registrationSelect)
     .eq('id', reg.id)
     .maybeSingle();
   const current = priced || reg;
 
-  const total = Math.max(0, Number(current.total_cost_paise) || 0);
-  const paid = Math.max(0, Number(current.amount_paid_paise) || 0);
-  const due = amountDuePaise(total, paid);
+  const feeTotal = Math.max(0, Number(current.total_cost_paise) || 0);
+  const feePaid = Math.max(0, Number(current.amount_paid_paise) || 0);
+  const feeDue = amountDuePaise(feeTotal, feePaid);
 
-  if (due === 0) {
-    const settled = await applyRegistrationPayment({
-      registrationId: reg.id,
-      settleFull: true,
-    });
+  const donation = await loadDonation(admin, current.donation_id);
+  const donationDue = donationDuePaise(donation);
+  const totalDue = feeDue + donationDue;
+
+  // Nothing owed (₹0 fee and no donation): settle now and issue the code if it is eligible.
+  if (totalDue === 0) {
+    const settled = await applyRegistrationPayment({ registrationId: reg.id, settleFull: true });
+    if (!settled.ok) {
+      return NextResponse.json({ error: settled.error }, { status: settled.status });
+    }
     return NextResponse.json({
       ok: true,
-      amount_due_paise: 0,
-      payment_status: settled.payment_status || 'paid',
-      registration_code: settled.registration_code || null,
       skipCheckout: true,
+      amount_due_paise: 0,
+      payment_status: settled.payment_status,
+      registration_code: settled.registration_code,
     });
   }
 
-  if (due < 100) {
+  if (totalDue < MIN_ONLINE_PAISE) {
     return NextResponse.json(
       { error: 'Amount due must be at least ₹1 to pay online' },
       { status: 400 }
@@ -96,40 +119,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Payments are not configured', configured: false }, { status: 503 });
   }
 
+  let orderId: string;
   try {
     const order = await client.orders.create({
-      amount: due,
+      amount: totalDue,
       currency: 'INR',
       receipt: `reg_${reg.id.slice(0, 8)}_${Date.now()}`.slice(0, 40),
       notes: {
         registration_id: reg.id,
+        donation_id: donation?.id ?? '',
         account_id: me.id,
       },
     });
-
-    const { error: updError } = await admin
-      .from('event_registrations')
-      .update({
-        razorpay_order_id: order.id,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', reg.id);
-
-    if (updError) {
-      console.error('create-order persist', updError);
-      return NextResponse.json({ error: 'Could not save payment order' }, { status: 500 });
-    }
-
-    return NextResponse.json({
-      ok: true,
-      orderId: order.id,
-      amount: due,
-      currency: 'INR',
-      keyId: razorpayKeyId(),
-      name: me.full_name,
-      email: me.email,
-      contact: me.phone_number,
-    });
+    orderId = order.id;
   } catch (err) {
     console.error('razorpay order', err);
     const statusCode =
@@ -147,4 +149,39 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ error: 'Could not create payment order' }, { status: 500 });
   }
+
+  // Store the order on the registration, and on the donation when there is one still owed.
+  const now = new Date().toISOString();
+  const { error: regUpdError } = await admin
+    .from('event_registrations')
+    .update({ razorpay_order_id: orderId, updated_at: now })
+    .eq('id', reg.id);
+  if (regUpdError) {
+    console.error('create-order persist registration', regUpdError);
+    return NextResponse.json({ error: 'Could not save payment order' }, { status: 500 });
+  }
+
+  if (donation && donationDue > 0) {
+    const { error: donUpdError } = await admin
+      .from('donations')
+      .update({ razorpay_order_id: orderId, updated_at: now })
+      .eq('id', donation.id);
+    if (donUpdError) {
+      console.error('create-order persist donation', donUpdError);
+      return NextResponse.json({ error: 'Could not save payment order' }, { status: 500 });
+    }
+  }
+
+  return NextResponse.json({
+    ok: true,
+    orderId,
+    amount: totalDue,
+    fee_due_paise: feeDue,
+    donation_due_paise: donationDue,
+    currency: 'INR',
+    keyId: razorpayKeyId(),
+    name: me.full_name,
+    email: me.email,
+    contact: me.phone_number,
+  });
 }
