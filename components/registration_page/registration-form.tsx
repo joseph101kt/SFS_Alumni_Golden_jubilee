@@ -1,9 +1,10 @@
 // components/registration_page/registration-form.tsx
 // The details form. Holds no save or payment logic: values and handlers come from the page.
+// Name, email and phone come from the alumni account and are shown read-only, not typed here.
 // Amounts shown are `displayMoney` (saved, or a live preview while edited). The Pay button is
 // hidden when the bank-transfer route is selected.
 
-import { useState, type Dispatch, type FormEvent, type SetStateAction ,type KeyboardEvent } from 'react';
+import { useState, type Dispatch, type FormEvent, type SetStateAction, type KeyboardEvent } from 'react';
 import BackHomeLink from '@/components/back-home-link';
 import SearchableSelect from '@/components/searchable-select';
 import {
@@ -11,7 +12,6 @@ import {
     type PaymentRoute,
 } from '@/components/registration_page/registration-donation';
 import { PaymentSummary } from '@/components/registration_page/registration-payment-summary';
-import { COUNTRY_CALLING_CODES, phoneInputHint, phoneValidationError } from '@/lib/phone';
 import {
     anyoneEating,
     clampGuestCount,
@@ -36,13 +36,18 @@ import {
 
 export type RegistrationFormMode = 'new' | 'pay' | 'update';
 
+/** Name, email and phone from the signed-in alumni account (alumni_accounts). */
+export interface AccountContact {
+    full_name: string;
+    last_name: string;
+    email: string;
+    phone_number: string;
+}
+
 export interface RegistrationFormProps {
     formData: FormData;
     setFormData: Dispatch<SetStateAction<FormData>>;
-    phoneIsd: string;
-    setPhoneIsd: (value: string) => void;
-    phoneNational: string;
-    setPhoneNational: (value: string) => void;
+    accountContact: AccountContact | null;
     event: EventCatalog | null;
     formMode: RegistrationFormMode;
     hasSavedReg: boolean;
@@ -57,6 +62,11 @@ export interface RegistrationFormProps {
     donationLocked: boolean;
     paymentRoute: PaymentRoute;
     setPaymentRoute: (route: PaymentRoute) => void;
+    /** Bank reference as the user is editing it. Saved by Save changes when the bank route is used. */
+    bankReferenceDraft: string;
+    setBankReferenceDraft: (value: string) => void;
+    /** Bank reference as last saved. */
+    savedBankReference: string;
     saveMessage: string;
     error: string;
     onSaveBankReference: (reference: string) => Promise<string | null>;
@@ -145,10 +155,7 @@ export function RegistrationForm(props: RegistrationFormProps) {
     const {
         formData,
         setFormData,
-        phoneIsd,
-        setPhoneIsd,
-        phoneNational,
-        setPhoneNational,
+        accountContact,
         event,
         formMode,
         hasSavedReg,
@@ -161,6 +168,9 @@ export function RegistrationForm(props: RegistrationFormProps) {
         donationLocked,
         paymentRoute,
         setPaymentRoute,
+        bankReferenceDraft,
+        setBankReferenceDraft,
+        savedBankReference,
         saveMessage,
         error,
         onSaveBankReference,
@@ -172,7 +182,6 @@ export function RegistrationForm(props: RegistrationFormProps) {
     const exchange = useInrExchangeRate(displayCurrency);
 
     const isSeniorSponsored = isSeniorSponsoredBatch(formData.batch);
-    const phoneError = phoneNational ? phoneValidationError(phoneIsd, phoneNational) : null;
     const feeLabel = formatCostForDisplay(EVENT_FEE_PER_PERSON_PAISE);
 
     // Display-only: whether the food question is shown. The fee itself comes from displayMoney.
@@ -232,77 +241,33 @@ export function RegistrationForm(props: RegistrationFormProps) {
                         </p>
                     )}
 
-                    <form onSubmit={onSubmit} onKeyDown={preventEnterSubmit}  className="space-y-6">
+                    <form onSubmit={onSubmit} onKeyDown={preventEnterSubmit} className="space-y-6">
+                        {/* Account details: read-only, taken from the signed-in alumni account */}
+                        <div>
+                            <h2 className="text-headline-sm text-primary mb-4 uppercase tracking-wider">Your Details</h2>
+                            <div className="rounded-lg border border-outline-variant bg-surface-container-low px-5 py-4 space-y-3">
+                                <dl className="grid grid-cols-1 sm:grid-cols-[8rem_1fr] gap-x-4 gap-y-2 text-body-sm">
+                                    <dt className="text-on-surface-variant">Name</dt>
+                                    <dd className="text-on-surface">
+                                        {accountContact?.full_name || '—'}
+                                        {accountContact?.last_name ? ` ${accountContact.last_name}` : ''}
+                                    </dd>
+                                    <dt className="text-on-surface-variant">Email</dt>
+                                    <dd className="text-on-surface break-all">{accountContact?.email || '—'}</dd>
+                                    <dt className="text-on-surface-variant">Phone</dt>
+                                    <dd className="text-on-surface tabular-nums">{accountContact?.phone_number || '—'}</dd>
+                                </dl>
+                                <p className="text-label-sm text-on-surface-variant">
+                                    Taken from your account. To change these, update your profile.
+                                </p>
+                            </div>
+                        </div>
+
                         {/* Personal information */}
                         <div>
-                            <h2 className="text-headline-sm text-primary mb-4 uppercase tracking-wider">Personal Information</h2>
+                            <h2 className="text-headline-sm text-primary mb-4 uppercase tracking-wider">Alumni Information</h2>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="flex flex-col">
-                                    <label className="text-label-md text-primary mb-2 uppercase tracking-wider">Full Name *</label>
-                                    <input
-                                        type="text"
-                                        value={formData.full_name}
-                                        onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                                        required
-                                        disabled={busy}
-                                        className={INPUT_CLASS}
-                                    />
-                                </div>
-
-                                <div className="md:col-span-2 flex flex-col">
-                                    <label className="text-label-md text-primary mb-2 uppercase tracking-wider">Email *</label>
-                                    <input
-                                        type="email"
-                                        value={formData.email}
-                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                        placeholder="you@gmail.com"
-                                        required
-                                        disabled={busy}
-                                        className={INPUT_CLASS}
-                                    />
-                                    <p className="text-label-sm text-on-surface-variant mt-1">
-                                        Public email only (Gmail, Yahoo, Outlook, iCloud, Proton, Rediffmail, AOL, Zoho)
-                                    </p>
-                                </div>
-
-                                <div className="md:col-span-2 flex flex-col">
-                                    <label className="text-label-md text-primary mb-2 uppercase tracking-wider">Phone Number *</label>
-                                    <div className="flex gap-2">
-                                        <select
-                                            value={phoneIsd}
-                                            onChange={(e) => setPhoneIsd(e.target.value)}
-                                            required
-                                            disabled={busy}
-                                            aria-label="Country calling code"
-                                            className="w-[9.5rem] shrink-0 px-2 py-3 rounded-lg border border-outline-variant text-body-sm bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all disabled:opacity-50"
-                                        >
-                                            {COUNTRY_CALLING_CODES.map((c) => (
-                                                <option key={c.code} value={c.code}>
-                                                    {c.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <input
-                                            type="tel"
-                                            value={phoneNational}
-                                            onChange={(e) => setPhoneNational(e.target.value.replace(/\D/g, ''))}
-                                            placeholder="9876543210"
-                                            required
-                                            disabled={busy}
-                                            inputMode="numeric"
-                                            autoComplete="tel-national"
-                                            maxLength={12}
-                                            aria-label="National phone number"
-                                            aria-invalid={Boolean(phoneError)}
-                                            className={`min-w-0 flex-1 ${INPUT_CLASS}`}
-                                        />
-                                    </div>
-                                    <p className={`text-label-sm mt-1 ${phoneError ? 'text-error' : 'text-on-surface-variant'}`}>
-                                        {phoneError ?? phoneInputHint(phoneIsd)}
-                                    </p>
-                                </div>
-
                                 <div className="flex flex-col">
                                     <label className="text-label-md text-primary mb-2 uppercase tracking-wider">City *</label>
                                     <input
@@ -471,6 +436,8 @@ export function RegistrationForm(props: RegistrationFormProps) {
                             donationLocked={donationLocked}
                             paymentRoute={paymentRoute}
                             setPaymentRoute={setPaymentRoute}
+                            bankReferenceDraft={bankReferenceDraft}
+                            setBankReferenceDraft={setBankReferenceDraft}
                             onSaveBankReference={onSaveBankReference}
                             displayCurrency={displayCurrency}
                             exchange={exchange}
@@ -481,7 +448,7 @@ export function RegistrationForm(props: RegistrationFormProps) {
                             isPreview={formDirty}
                             refundEmail={event?.refund_email}
                             eventTitle={event?.title || 'Event'}
-                            fullName={formData.full_name}
+                            fullName={accountContact?.full_name || ''}
                             displayCurrency={displayCurrency}
                             onCurrencyChange={setDisplayCurrency}
                             exchange={exchange}
@@ -533,7 +500,8 @@ export function RegistrationForm(props: RegistrationFormProps) {
 function preventEnterSubmit(event: KeyboardEvent<HTMLFormElement>) {
     if (event.key !== 'Enter') return;
     const target = event.target as HTMLElement;
-    // Let the Enter key work normally on the submit buttons themselves.
+    // Let the Enter key work normally on the submit buttons and multi-line bank reference box.
     if (target instanceof HTMLButtonElement) return;
+    if (target instanceof HTMLTextAreaElement) return;
     event.preventDefault();
 }

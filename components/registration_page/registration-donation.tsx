@@ -1,6 +1,7 @@
 // components/registration_page/registration-donation.tsx
 // Donation choice and payment route. The amount due shown is `displayMoney`: the saved figure, or a
-// live preview while the form has edits. Saving the reference saves the form first (in the page).
+// live preview while the form has edits. The bank reference is controlled by the page, so
+// "Save changes" on the form also stores an edited reference. "Save reference" stays as a shortcut.
 
 import { useState, type Dispatch, type SetStateAction } from 'react';
 import { formatCostForDisplay } from '@/lib/registration/registration';
@@ -31,6 +32,9 @@ export interface DonationSectionProps {
     donationLocked: boolean;
     paymentRoute: PaymentRoute;
     setPaymentRoute: (route: PaymentRoute) => void;
+    /** Bank reference as the user is editing it, owned by the page. */
+    bankReferenceDraft: string;
+    setBankReferenceDraft: (value: string) => void;
     onSaveBankReference: (reference: string) => Promise<string | null>;
     displayCurrency: DisplayCurrency;
     exchange: ExchangeRateState;
@@ -46,6 +50,8 @@ export function DonationSection({
     donationLocked,
     paymentRoute,
     setPaymentRoute,
+    bankReferenceDraft,
+    setBankReferenceDraft,
     onSaveBankReference,
     displayCurrency,
     exchange,
@@ -150,6 +156,8 @@ export function DonationSection({
                     formDirty={formDirty}
                     busy={busy}
                     paymentStatus={money.paymentStatus}
+                    bankReferenceDraft={bankReferenceDraft}
+                    setBankReferenceDraft={setBankReferenceDraft}
                     onSaveBankReference={onSaveBankReference}
                     displayCurrency={displayCurrency}
                     exchange={exchange}
@@ -164,6 +172,8 @@ interface BankTransferSectionProps {
     formDirty: boolean;
     busy: boolean;
     paymentStatus: string | null;
+    bankReferenceDraft: string;
+    setBankReferenceDraft: (value: string) => void;
     onSaveBankReference: (reference: string) => Promise<string | null>;
     displayCurrency: DisplayCurrency;
     exchange: ExchangeRateState;
@@ -174,16 +184,17 @@ function BankTransferSection({
     formDirty,
     busy,
     paymentStatus,
+    bankReferenceDraft,
+    setBankReferenceDraft,
     onSaveBankReference,
     displayCurrency,
     exchange,
 }: BankTransferSectionProps) {
-    const [reference, setReference] = useState('');
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
 
-    const canSave = reference.trim().length > 0 && !saving && !busy;
+    const canSave = bankReferenceDraft.trim().length > 0 && !saving && !busy;
     const approxDue = approximateInCurrency(amountDuePaise, displayCurrency, exchange);
 
     async function handleSaveReference() {
@@ -191,7 +202,7 @@ function BankTransferSection({
         setSaving(true);
         setError('');
         setMessage('');
-        const saveError = await onSaveBankReference(reference.trim());
+        const saveError = await onSaveBankReference(bankReferenceDraft.trim());
         setSaving(false);
         if (saveError) {
             setError(saveError);
@@ -205,7 +216,7 @@ function BankTransferSection({
     }
 
     return (
-        <div className="rounded-lg border border-outline-variant p-5 space-y-5">
+        <div className="rounded-lg border border-outline-variant p-5 space-y-6">
             <div className="text-body-sm text-on-surface">
                 <p>
                     Amount to remit:{' '}
@@ -237,30 +248,47 @@ function BankTransferSection({
                 </dl>
             </div>
 
+            <div className="rounded-lg bg-surface-container-low px-4 py-4 text-body-sm text-on-surface space-y-2">
+                <p className="font-semibold text-primary">Before you send the remittance, include these details:</p>
+                <ul className="list-disc pl-5 space-y-1 text-on-surface-variant">
+                    <li>Your full name, as registered on this portal</li>
+                    <li>Your registration email and phone number</li>
+                    <li>The amount sent (INR {formatCostForDisplay(amountDuePaise).replace(/^₹\s?/, '')})</li>
+                    <li>Purpose: Golden Jubilee registration and donation</li>
+                    <li>Your sender bank name, branch, and account number</li>
+                </ul>
+                <p className="text-on-surface-variant">
+                    Enter the transaction reference or UTR number you receive from your bank in the box below. Then save.
+                </p>
+            </div>
+
             <ol className="text-body-sm text-on-surface-variant list-decimal pl-5 space-y-1">
                 <li>Make the foreign remittance first, using the details above.</li>
                 <li>Enter your bank payment reference below and save.</li>
             </ol>
 
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-3">
                 <label htmlFor="bank_reference" className="text-label-md text-primary uppercase tracking-wider">
                     Bank reference
                 </label>
-                <div className="flex flex-col sm:flex-row gap-3">
-                    <input
-                        id="bank_reference"
-                        type="text"
-                        value={reference}
-                        onChange={(e) => setReference(e.target.value)}
-                        placeholder="e.g. UTR / transaction reference"
-                        disabled={busy || saving}
-                        className={`flex-1 ${INPUT_CLASS}`}
-                    />
+                <textarea
+                    id="bank_reference"
+                    value={bankReferenceDraft}
+                    onChange={(e) => setBankReferenceDraft(e.target.value)}
+                    placeholder="Paste the UTR / transaction reference, and any other remittance details your bank gives you"
+                    rows={5}
+                    disabled={busy || saving}
+                    className={`w-full min-h-[10rem] resize-y leading-relaxed ${INPUT_CLASS}`}
+                />
+                <p className="text-label-sm text-on-surface-variant">
+                    Changes here are stored when you press Save changes below, or use the button here.
+                </p>
+                <div className="flex justify-end">
                     <button
                         type="button"
                         onClick={() => void handleSaveReference()}
                         disabled={!canSave}
-                        className="px-6 py-3 rounded-lg bg-primary text-on-primary text-label-md uppercase tracking-wider font-bold hover:bg-navy-subtle disabled:bg-surface-container disabled:text-on-surface-variant transition-all"
+                        className="px-8 py-3 rounded-lg bg-primary text-on-primary text-label-md uppercase tracking-wider font-bold hover:bg-navy-subtle disabled:bg-surface-container disabled:text-on-surface-variant transition-all"
                     >
                         {saving ? 'Saving…' : 'Save reference'}
                     </button>

@@ -1,16 +1,17 @@
 // app/registration/page.tsx
 // Registration route. The database is the source of truth for every amount shown on load.
+// Name, email and phone come from the signed-in alumni account (alumni_accounts), not from this form.
 // When the committee has verified a registration, the server reports committee_confirmed and the
 // page shows the confirmed state with the registration code, and no payment is asked for.
-// Pay and Save reference save the form first, then act on the saved registration.
+// Save changes also stores an edited bank reference. Pay saves the form first, then pays.
+// On reopen, a saved bank reference restores the bank-transfer route so the user lands where they left off.
 
 'use client';
 
 import { Suspense, useEffect, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
-import { isPublicEmail, normalizeEmail } from '@/lib/email';
-import { normalizePhoneNumber, phoneValidationError, splitE164, toE164 } from '@/lib/phone';
+import { normalizePhoneNumber, phoneValidationError, splitE164 } from '@/lib/phone';
 import { formatCostForDisplay, isEventAttending, MAX_GUESTS } from '@/lib/registration/registration';
 import { formatLocation, isValidBatch, isValidSection, parseLocation } from '@/lib/registration/registration-fields';
 import { chooseRegistrationEvent } from '@/lib/events/choose-event';
@@ -30,7 +31,11 @@ import {
     EventUnavailableScreen,
     SignInScreen,
 } from '@/components/registration_page/registration-screens';
-import { RegistrationForm, type RegistrationFormMode } from '@/components/registration_page/registration-form';
+import {
+    RegistrationForm,
+    type AccountContact,
+    type RegistrationFormMode,
+} from '@/components/registration_page/registration-form';
 import { RegistrationSuccess } from '@/components/registration_page/registration-success';
 import type { PaymentRoute } from '@/components/registration_page/registration-donation';
 import { previewMoney } from '@/lib/registration/preview';
@@ -63,6 +68,7 @@ interface LoadedRegistration {
     id: string;
     money: RegistrationMoney;
     committeeConfirmed: boolean;
+    bankReference: string;
 }
 
 function formFromPrefill(prefill: RegistrationPrefill): FormData {
@@ -82,6 +88,54 @@ function formFromPrefill(prefill: RegistrationPrefill): FormData {
         guests_eating: prefill.guests_eating,
         ...donationFormFromPaise(prefill.intended_donation_paise),
     };
+}
+
+/**
+ * Reads the signed-in alumni's name, email and phone from alumni_accounts.
+ * Falls back to the auth profile if the row cannot be read, so registration still works.
+ */
+async function loadAccountContact(
+    supabase: ReturnType<typeof createClient>,
+    userId: string,
+    profile: AuthProfile
+): Promise<AccountContact> {
+    const fallback: AccountContact = {
+        full_name: profile.full_name || '',
+        last_name: profile.last_name || '',
+        email: profile.email || '',
+        phone_number: profile.phone_number || '',
+    };
+    try {
+        const { data, error } = await supabase
+            .from('alumni_accounts')
+            .select('full_name, last_name, email, phone_number')
+            .eq('id', userId)
+            .maybeSingle();
+        if (error || !data) return fallback;
+        return {
+            full_name: data.full_name ?? fallback.full_name,
+            last_name: data.last_name ?? fallback.last_name,
+            email: data.email ?? fallback.email,
+            phone_number: data.phone_number ?? fallback.phone_number,
+        };
+    } catch {
+        return fallback;
+    }
+}
+
+/** Returns a message telling the user what to fix in their account, or null when the contact is usable. */
+function accountContactProblem(contact: AccountContact | null): string | null {
+    if (!contact) return 'Your account details are still loading. Try again in a moment.';
+    if (!contact.full_name.trim()) return 'Your account has no name. Add it in your profile, then register.';
+    if (!contact.email.trim()) return 'Your account has no email. Add it in your profile, then register.';
+    if (!contact.phone_number.trim()) {
+        return 'Your account has no phone number. Add it in your profile, then register.';
+    }
+    const split = splitE164(contact.phone_number);
+    if (phoneValidationError(split.isd, split.national)) {
+        return 'Your account phone number is not valid. Update it in your profile, then register.';
+    }
+    return null;
 }
 
 export default function RegistrationPage() {
@@ -115,13 +169,17 @@ function RegistrationPageInner() {
     const [currentStep, setCurrentStep] = useState<RegistrationStep>('phone');
     const [error, setError] = useState('');
     const [preRegData, setPreRegData] = useState<PreRegistrationData | null>(null);
-    const [phoneIsd, setPhoneIsd] = useState('+91');
-    const [phoneNational, setPhoneNational] = useState('');
+    /** Name, email and phone from the alumni account. Never typed on this form. */
+    const [accountContact, setAccountContact] = useState<AccountContact | null>(null);
     const [formData, setFormData] = useState<FormData>(EMPTY_FORM);
     /** Amounts as the database last returned them. Never edited in the browser. */
     const [money, setMoney] = useState<RegistrationMoney>(EMPTY_MONEY);
     const [committeeConfirmed, setCommitteeConfirmed] = useState(false);
     const [registrationId, setRegistrationId] = useState<string | null>(null);
+    /** Bank reference as the database last returned it. Used to tell whether the draft has changed. */
+    const [savedBankReference, setSavedBankReference] = useState('');
+    /** Bank reference as the user is editing it. Saved together with the form. */
+    const [bankReferenceDraft, setBankReferenceDraft] = useState('');
     /** Fingerprint of the choices as last saved. Differs from the form when edits are unsaved. */
     const [savedFingerprint, setSavedFingerprint] = useState('');
     const [paymentRoute, setPaymentRoute] = useState<PaymentRoute>('portal');
@@ -210,12 +268,10 @@ function RegistrationPageInner() {
                 return;
             }
 
-            // Exact match: auto-prefill.
+            // Exact match: auto-prefill the fields this form still asks for.
             const loc = parseLocation(match.current_location || '');
             setFormData((prev) => ({
                 ...prev,
-                full_name: match.full_name || prev.full_name,
-                last_name: match.last_name || prev.last_name,
                 batch: match.batch || prev.batch,
                 section: match.section || prev.section,
                 city: loc.city || prev.city,
@@ -253,23 +309,19 @@ function RegistrationPageInner() {
                 }
                 setGate('ok');
 
-                const split = splitE164(profile.phone_number || '');
-                setPhoneIsd(split.isd);
-                setPhoneNational(split.national);
+                const contact = await loadAccountContact(supabase, profile.id, profile);
+                setAccountContact(contact);
+
                 const loc = parseLocation(profile.current_location || '');
                 setFormData((prev) => ({
                     ...prev,
-                    email: profile.email || '',
-                    phone_number: profile.phone_number || '',
-                    full_name: profile.full_name || '',
-                    last_name: profile.last_name || '',
                     batch: profile.batch ?? undefined,
                     section: profile.section || '',
                     city: loc.city,
                     country: loc.country,
                 }));
 
-                await prefillFromPreRegistration(profile.phone_number || '', profile.email || '');
+                await prefillFromPreRegistration(contact.phone_number, contact.email);
                 setCurrentStep('details');
             } catch {
                 setCurrentStep('phone');
@@ -306,15 +358,19 @@ function RegistrationPageInner() {
             setRegistrationId(null);
             setMoney(EMPTY_MONEY);
             setCommitteeConfirmed(false);
+            setSavedBankReference('');
+            setBankReferenceDraft('');
             return null;
         }
 
         const id = String(reg.id ?? '');
         const next = moneyFromRegistration(reg);
         const confirmed = reg.committee_confirmed === true;
+        const bankReference = typeof reg.bank_reference === 'string' ? reg.bank_reference : '';
         setRegistrationId(id || null);
         setMoney(next);
         setCommitteeConfirmed(confirmed);
+        setSavedBankReference(bankReference);
         setHasSavedReg(true);
 
         if (applyToForm) {
@@ -325,10 +381,10 @@ function RegistrationPageInner() {
             const nextForm = formFromPrefill(prefill);
             setFormData(nextForm);
             setSavedFingerprint(choicesFingerprint(nextForm));
-            if (prefill.phone_number) {
-                const split = splitE164(prefill.phone_number);
-                setPhoneIsd(split.isd);
-                setPhoneNational(split.national);
+            // Show the saved reference in the box, and keep the bank route if one was saved.
+            setBankReferenceDraft(bankReference);
+            if (bankReference) {
+                setPaymentRoute('bank');
             }
         }
 
@@ -336,7 +392,7 @@ function RegistrationPageInner() {
         if (confirmed || (next.paymentStatus === 'paid' && next.totalDuePaise === 0)) {
             setCurrentStep('success');
         }
-        return { id, money: next, committeeConfirmed: confirmed };
+        return { id, money: next, committeeConfirmed: confirmed, bankReference };
     }
 
     useEffect(() => {
@@ -346,25 +402,18 @@ function RegistrationPageInner() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user?.id, event?.id, gate]);
 
+    /**
+     * Checks the form fields and the account contact. Returns the account's phone in E.164 for saving.
+     * Name, email and phone are not typed on this form, so their errors point to the profile instead.
+     */
     function validateRegistrationForm(): { ok: true; e164: string } | { ok: false } {
-        const email = normalizeEmail(formData.email);
-        if (!isPublicEmail(email)) {
-            setError(
-                'Use a public email address (Gmail, Yahoo, Outlook, iCloud, Proton, Rediffmail, AOL, or Zoho)'
-            );
+        const contactProblem = accountContactProblem(accountContact);
+        if (contactProblem || !accountContact) {
+            setError(contactProblem || 'Your account details are missing.');
             return { ok: false };
         }
+        const e164 = normalizePhoneNumber(accountContact.phone_number) || accountContact.phone_number;
 
-        const phoneErr = phoneValidationError(phoneIsd, phoneNational);
-        const e164 = phoneErr ? null : toE164(phoneIsd, phoneNational);
-        if (phoneErr || !e164) {
-            setError(phoneErr || 'Enter a valid phone number with country code (ISD) and national number');
-            return { ok: false };
-        }
-        if (!formData.full_name.trim()) {
-            setError('Full name is required');
-            return { ok: false };
-        }
         if (!isValidBatch(formData.batch)) {
             setError('Select your batch year');
             return { ok: false };
@@ -409,7 +458,28 @@ function RegistrationPageInner() {
         return { ok: true, e164 };
     }
 
-    /** Writes the form to the database, then reloads the saved amounts. Never opens checkout. */
+    /** Stores the bank reference on a saved registration. Returns an error message, or null on success. */
+    async function postBankReference(regId: string, reference: string): Promise<string | null> {
+        try {
+            const res = await fetch(BANK_REFERENCE_ENDPOINT, {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ registrationId: regId, bank_reference: reference }),
+            });
+            if (!res.ok) {
+                const payload = (await res.json().catch(() => ({}))) as { error?: string };
+                return payload.error || 'Could not save the bank reference. Please try again.';
+            }
+            return null;
+        } catch {
+            return 'Could not save the bank reference. Please try again.';
+        }
+    }
+
+    /**
+     * Writes the form to the database, stores the bank reference if it changed, then reloads the
+     * saved amounts. Never opens checkout.
+     */
     async function saveRegistration(e?: FormEvent): Promise<LoadedRegistration | null> {
         e?.preventDefault();
         if (!user || saving || paying || !event) return null;
@@ -419,7 +489,7 @@ function RegistrationPageInner() {
         setSaveMessage('');
 
         const valid = validateRegistrationForm();
-        if (!valid.ok) {
+        if (!valid.ok || !accountContact) {
             setSaving(false);
             return null;
         }
@@ -431,8 +501,8 @@ function RegistrationPageInner() {
                 body: JSON.stringify({
                     eventId: event.id,
                     phone_number: valid.e164,
-                    full_name: formData.full_name.trim(),
-                    last_name: formData.last_name.trim(),
+                    full_name: accountContact.full_name.trim(),
+                    last_name: accountContact.last_name.trim(),
                     batch: formData.batch,
                     section: formData.section,
                     city: formData.city.trim(),
@@ -459,6 +529,21 @@ function RegistrationPageInner() {
                 return null;
             }
 
+            // Store the bank reference too, but only when the bank route is in use and the text changed.
+            const draft = bankReferenceDraft.trim();
+            const referenceChanged = draft !== (loaded.bankReference || '').trim();
+            if (paymentRoute === 'bank' && draft && referenceChanged) {
+                const refError = await postBankReference(loaded.id, draft);
+                if (refError) {
+                    setError(`Registration saved, but ${refError.charAt(0).toLowerCase()}${refError.slice(1)}`);
+                    setSavedFingerprint(choicesFingerprint(formData));
+                    setSaving(false);
+                    return null;
+                }
+                setSavedBankReference(draft);
+                loaded.bankReference = draft;
+            }
+
             setSavedFingerprint(choicesFingerprint(formData));
             setSaveMessage(
                 loaded.money.totalDuePaise > 0
@@ -476,7 +561,7 @@ function RegistrationPageInner() {
 
     /** Pays the saved registration's total (fee plus donation) in one Razorpay order. */
     async function payDue(regId: string) {
-        if (!user || paying || !event?.id) return;
+        if (!user || paying || !event?.id || !accountContact) return;
         const eventId = event.id;
 
         setError('');
@@ -515,11 +600,10 @@ function RegistrationPageInner() {
                 return;
             }
 
-            const e164 = toE164(phoneIsd, phoneNational) || formData.phone_number;
             const checkoutOrder = toCheckoutOrder(orderPayload, {
-                name: formData.full_name,
-                email: formData.email,
-                contact: e164,
+                name: accountContact.full_name,
+                email: accountContact.email,
+                contact: normalizePhoneNumber(accountContact.phone_number) || accountContact.phone_number,
             });
             if (!checkoutOrder) {
                 setError('Payment could not be started. Your registration is still saved.');
@@ -584,8 +668,12 @@ function RegistrationPageInner() {
         await payNow();
     }
 
-    /** Save reference: save the form first if needed, then store the reference on the saved registration. */
+    /**
+     * "Save reference" button in the bank section. Saves the form first if it has unsaved edits,
+     * then stores the reference. Returns an error message, or null on success.
+     */
     async function saveBankReference(reference: string): Promise<string | null> {
+        setBankReferenceDraft(reference);
         let regId = registrationId;
         if (formDirty || !regId) {
             const loaded = await saveRegistration();
@@ -594,28 +682,16 @@ function RegistrationPageInner() {
         }
         if (!regId) return 'Could not find your registration. Please try again.';
 
-        try {
-            const res = await fetch(BANK_REFERENCE_ENDPOINT, {
-                method: 'POST',
-                headers: { 'content-type': 'application/json' },
-                body: JSON.stringify({ registrationId: regId, bank_reference: reference }),
-            });
-            if (!res.ok) {
-                const payload = (await res.json().catch(() => ({}))) as { error?: string };
-                return payload.error || 'Could not save the bank reference. Please try again.';
-            }
-            return null;
-        } catch {
-            return 'Could not save the bank reference. Please try again.';
-        }
+        const refError = await postBankReference(regId, reference.trim());
+        if (refError) return refError;
+        setSavedBankReference(reference.trim());
+        return null;
     }
 
     function acceptPreRegistration(match: PreRegistrationData) {
         const loc = parseLocation(match.current_location || '');
         setFormData((prev) => ({
             ...prev,
-            full_name: match.full_name,
-            last_name: match.last_name || '',
             batch: match.batch,
             section: match.section || '',
             city: loc.city,
@@ -630,7 +706,9 @@ function RegistrationPageInner() {
         setCurrentStep('details');
     }
 
-    const formDirty = !savedFingerprint || choicesFingerprint(formData) !== savedFingerprint;
+    const referenceDirty = bankReferenceDraft.trim() !== savedBankReference.trim();
+    const formDirty =
+        (!savedFingerprint || choicesFingerprint(formData) !== savedFingerprint) || (paymentRoute === 'bank' && referenceDirty);
     // Shown amounts: the database figures until the form is edited, then a live preview.
     const displayMoney = formDirty ? previewMoney(money, formData) : money;
     const donationLocked = money.donationPaymentStatus === 'paid';
@@ -675,10 +753,7 @@ function RegistrationPageInner() {
             <RegistrationForm
                 formData={formData}
                 setFormData={setFormData}
-                phoneIsd={phoneIsd}
-                setPhoneIsd={setPhoneIsd}
-                phoneNational={phoneNational}
-                setPhoneNational={setPhoneNational}
+                accountContact={accountContact}
                 event={event}
                 formMode={formMode}
                 hasSavedReg={hasSavedReg}
@@ -691,6 +766,9 @@ function RegistrationPageInner() {
                 donationLocked={donationLocked}
                 paymentRoute={paymentRoute}
                 setPaymentRoute={setPaymentRoute}
+                bankReferenceDraft={bankReferenceDraft}
+                setBankReferenceDraft={setBankReferenceDraft}
+                savedBankReference={savedBankReference}
                 saveMessage={saveMessage}
                 error={error}
                 onSaveBankReference={saveBankReference}

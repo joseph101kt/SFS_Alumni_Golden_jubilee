@@ -15,6 +15,26 @@ import {
     toE164,
 } from '@/lib/phone';
 
+// Names allow letters from any script and spaces only. Digits, punctuation and
+// symbols are rejected so names stay clean in certificates, badges and exports.
+const NAME_ALLOWED_CHARS_PATTERN = /[^\p{L} ]/gu;
+const NAME_VALID_PATTERN = /^[\p{L} ]+$/u;
+
+// Usernames allow letters, digits and underscores only. Usernames are used in
+// URLs and mentions, so spaces and symbols are excluded.
+const USERNAME_DISALLOWED_CHARS_PATTERN = /[^\p{L}\p{N}_]/gu;
+const USERNAME_VALID_PATTERN = /^[\p{L}\p{N}_]+$/u;
+
+// Strips disallowed characters as the user types or pastes, so invalid input
+// never appears in the field. Validation on submit still runs as a backstop.
+function sanitizeNameInput(raw: string): string {
+    return raw.replace(NAME_ALLOWED_CHARS_PATTERN, '');
+}
+
+function sanitizeUsernameInput(raw: string): string {
+    return raw.replace(USERNAME_DISALLOWED_CHARS_PATTERN, '');
+}
+
 export default function SignupPage() {
     return (
         <Suspense fallback={null}>
@@ -45,8 +65,22 @@ function SignupForm() {
         setError('');
         setSuccess('');
 
-        if (!firstName.trim() || !lastName.trim()) {
+        const trimmedFirstName = firstName.trim();
+        const trimmedLastName = lastName.trim();
+        const trimmedUsername = username.trim();
+
+        if (!trimmedFirstName || !trimmedLastName) {
             setError('First name and last name are required');
+            setLoading(false);
+            return;
+        }
+        if (!NAME_VALID_PATTERN.test(trimmedFirstName) || !NAME_VALID_PATTERN.test(trimmedLastName)) {
+            setError('First and last name can only contain letters and spaces');
+            setLoading(false);
+            return;
+        }
+        if (trimmedUsername && !USERNAME_VALID_PATTERN.test(trimmedUsername)) {
+            setError('Username can only contain letters, numbers and underscores');
             setLoading(false);
             return;
         }
@@ -86,11 +120,11 @@ function SignupForm() {
                 headers: { 'content-type': 'application/json' },
                 body: JSON.stringify({
                     email,
-                    username: username.trim(),
+                    username: trimmedUsername,
                     password,
                     passwordConfirm,
-                    firstName: firstName.trim(),
-                    lastName: lastName.trim(),
+                    firstName: trimmedFirstName,
+                    lastName: trimmedLastName,
                     phoneIsd: phoneIsd.trim(),
                     phoneNational: phoneNational.trim(),
                 }),
@@ -112,7 +146,7 @@ function SignupForm() {
                 else if (me?.jubilee_reg_status === 'paid') router.push('/member');
                 else router.push('/registration');
             }, 1500);
-        } catch (err) {
+        } catch {
             setError('An unexpected error occurred');
             setLoading(false);
         }
@@ -153,7 +187,7 @@ function SignupForm() {
                                     id="first-name"
                                     type="text"
                                     value={firstName}
-                                    onChange={(e) => setFirstName(e.target.value)}
+                                    onChange={(e) => setFirstName(sanitizeNameInput(e.target.value))}
                                     placeholder="John"
                                     required
                                     autoComplete="given-name"
@@ -169,7 +203,7 @@ function SignupForm() {
                                     id="last-name"
                                     type="text"
                                     value={lastName}
-                                    onChange={(e) => setLastName(e.target.value)}
+                                    onChange={(e) => setLastName(sanitizeNameInput(e.target.value))}
                                     placeholder="Doe"
                                     required
                                     autoComplete="family-name"
@@ -208,14 +242,14 @@ function SignupForm() {
                                 id="username"
                                 type="text"
                                 value={username}
-                                onChange={(e) => setUsername(e.target.value)}
+                                onChange={(e) => setUsername(sanitizeUsernameInput(e.target.value))}
                                 placeholder="Optional"
                                 autoComplete="username"
                                 disabled={loading}
                                 className={fieldClass}
                             />
                             <p className="text-label-sm text-on-surface-variant mt-1">
-                                Leave blank to use your email. Your username will be {usernamePreview}.
+                                Letters, numbers and underscores only. Leave blank to use your email. Your username will be {usernamePreview}.
                             </p>
                         </div>
 
