@@ -257,9 +257,6 @@ export function RegistrationForm(props: RegistrationFormProps) {
                                     <dt className="text-on-surface-variant">Phone</dt>
                                     <dd className="text-on-surface tabular-nums">{accountContact?.phone_number || '—'}</dd>
                                 </dl>
-                                <p className="text-label-sm text-on-surface-variant">
-                                    Taken from your account. To change these, update your profile.
-                                </p>
                             </div>
                         </div>
 
