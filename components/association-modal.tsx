@@ -1,6 +1,8 @@
+// components/association-modal.tsx
 'use client';
 
 import Link from 'next/link';
+import { createPortal } from 'react-dom';
 import { useEffect, useId, useRef, useState } from 'react';
 import CommitteeBusinessCard, {
   type PublicCommitteeMember,
@@ -18,6 +20,12 @@ export default function AssociationModal({
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
   const [members, setMembers] = useState<PublicCommitteeMember[] | null>(null);
+  // Portals need a DOM node, which doesn't exist during SSR, so we wait for mount
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -53,9 +61,11 @@ export default function AssociationModal({
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
-  return (
+  // Rendered into document.body so ancestor transforms, filters, or overflow
+  // rules can't offset or clip the fixed overlay
+  return createPortal(
     <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-6">
       <button
         type="button"
@@ -123,6 +133,7 @@ export default function AssociationModal({
           </Link>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

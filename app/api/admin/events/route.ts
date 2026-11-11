@@ -1,3 +1,4 @@
+// app/api/admin/events/route.ts
 import { NextResponse } from 'next/server';
 import { requireVerifiedAdmin } from '@/lib/auth/admin-guard';
 import {
