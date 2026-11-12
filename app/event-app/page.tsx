@@ -39,7 +39,7 @@ export default function EventAppPage() {
       <p className="text-label-sm uppercase tracking-[0.16em] text-jubilee-gold-deep font-bold">
         Event app
       </p>
-      <h1 className="text-display-sm text-primary mt-2">SFS Golden Jubilee</h1>
+      <h1 className="text-display-sm text-primary mt-2">SFS 50 year Aniversary Meet</h1>
 
       <nav className="mt-8 grid gap-3">
         <Link

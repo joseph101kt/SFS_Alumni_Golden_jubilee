@@ -84,6 +84,8 @@ export type DonationOption = 'zero' | '5000' | '10000' | '25000' | 'custom';
  * What the form edits. Attendance and food are choices, not prices.
  * number_of_guests is how many guests are coming. guests_eating is how many of them eat.
  * food_preference is one shared choice for everyone eating.
+ * Parking: has_parking is a yes/no. The vehicle counts are only meaningful when has_parking is true,
+ * and are kept at 0 otherwise.
  */
 export interface FormData {
     phone_number: string;
@@ -99,6 +101,9 @@ export interface FormData {
     food_preference: FoodPreference;
     number_of_guests: number;
     guests_eating: number;
+    has_parking: boolean;
+    two_wheeler_count: number;
+    four_wheeler_count: number;
     donation_option: DonationOption;
     /** Raw digits typed into the custom donation input. Empty means no donation. */
     donation_custom: string;
@@ -117,6 +122,9 @@ export const EMPTY_FORM: FormData = {
     food_preference: 'veg',
     number_of_guests: 0,
     guests_eating: 0,
+    has_parking: false,
+    two_wheeler_count: 0,
+    four_wheeler_count: 0,
     donation_option: 'zero',
     donation_custom: '',
 };
@@ -240,7 +248,7 @@ export function donationValidationError(data: FormData): string | null {
 }
 
 /**
- * Compact signature of everything the server prices. Used to tell whether the form has
+ * Compact signature of everything the server prices or stores. Used to tell whether the form has
  * unsaved changes compared with the last saved state.
  */
 export function choicesFingerprint(data: FormData): string {
@@ -250,6 +258,9 @@ export function choicesFingerprint(data: FormData): string {
         data.food_preference,
         data.number_of_guests,
         data.guests_eating,
+        data.has_parking,
+        data.has_parking ? data.two_wheeler_count : 0,
+        data.has_parking ? data.four_wheeler_count : 0,
         donationIntentPaise(data),
     ].join('|');
 }

@@ -171,7 +171,7 @@ function SignupForm() {
                     </div>
                     <h1 className="text-headline-lg text-primary mb-2">Create Your Account</h1>
                     <p className="text-body-sm text-on-surface-variant">
-                        Join the Golden Jubilee celebration and register for the reunion
+                        Register for the reunion and join the celebration 
                     </p>
                 </div>
 

@@ -5,6 +5,7 @@
 // page shows the confirmed state with the registration code, and no payment is asked for.
 // Save changes also stores an edited bank reference. Pay saves the form first, then pays.
 // On reopen, a saved bank reference restores the bank-transfer route so the user lands where they left off.
+// Parking: a yes/no plus 2-wheeler and 4-wheeler counts. Total vehicles may not exceed guests + 1.
 
 'use client';
 
@@ -12,7 +13,13 @@ import { Suspense, useEffect, useState, type FormEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { normalizePhoneNumber, phoneValidationError, splitE164 } from '@/lib/phone';
-import { formatCostForDisplay, isEventAttending, MAX_GUESTS } from '@/lib/registration/registration';
+import {
+    clampVehicleCount,
+    formatCostForDisplay,
+    isEventAttending,
+    MAX_GUESTS,
+    vehicleCountsProblem,
+} from '@/lib/registration/registration';
 import { formatLocation, isValidBatch, isValidSection, parseLocation } from '@/lib/registration/registration-fields';
 import { chooseRegistrationEvent } from '@/lib/events/choose-event';
 import { eventIsOpen } from '@/lib/events/open';
@@ -86,6 +93,9 @@ function formFromPrefill(prefill: RegistrationPrefill): FormData {
         food_preference: prefill.food_preference,
         number_of_guests: prefill.number_of_guests,
         guests_eating: prefill.guests_eating,
+        has_parking: prefill.has_parking,
+        two_wheeler_count: prefill.two_wheeler_count,
+        four_wheeler_count: prefill.four_wheeler_count,
         ...donationFormFromPaise(prefill.intended_donation_paise),
     };
 }
@@ -446,6 +456,17 @@ function RegistrationPageInner() {
             setError('Choose at least one person to attend: you or a guest');
             return { ok: false };
         }
+        if (formData.has_parking) {
+            const parkingError = vehicleCountsProblem(
+                formData.two_wheeler_count,
+                formData.four_wheeler_count,
+                formData.number_of_guests
+            );
+            if (parkingError) {
+                setError(parkingError);
+                return { ok: false };
+            }
+        }
         const donationError = donationValidationError(formData);
         if (donationError) {
             setError(donationError);
@@ -494,6 +515,10 @@ function RegistrationPageInner() {
             return null;
         }
 
+        // Vehicle counts only count when parking is needed; otherwise they are sent as zero.
+        const twoWheelers = formData.has_parking ? clampVehicleCount(formData.two_wheeler_count) : 0;
+        const fourWheelers = formData.has_parking ? clampVehicleCount(formData.four_wheeler_count) : 0;
+
         try {
             const res = await fetch('/api/registration/event', {
                 method: 'POST',
@@ -512,6 +537,9 @@ function RegistrationPageInner() {
                     food_preference: formData.food_preference,
                     number_of_guests: formData.number_of_guests,
                     guests_eating: formData.guests_eating,
+                    has_parking: formData.has_parking,
+                    two_wheeler_count: twoWheelers,
+                    four_wheeler_count: fourWheelers,
                     intended_donation_paise: donationIntentPaise(formData),
                 }),
             });

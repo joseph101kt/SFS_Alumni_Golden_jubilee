@@ -18,31 +18,40 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "St. Francis de Sales' High School - Golden Jubilee (1976-2026)",
+  metadataBase: new URL('https://goldenJubilee.sfsshanthinagar.edu'),
+  title: "St. Francis de Sales' High School - Alumni Meet on 50 year aniversary (1976-2026)",
   description:
-    'Celebrating 50 glorious years of transformational education. Alumni registration and homecoming for SFS Shanthinagar golden jubilee.',
-  keywords: ['alumni', 'golden jubilee', 'school reunion', 'SFS Shanthinagar', 'registration'],
+    'Celebrating 50 glorious years of transformational education. Alumni Meet registration on 50 year aniversary.',
+  keywords: ['alumni', 'school reunion', 'SFS Shanthinagar', 'registration'],
   authors: [{ name: "St. Francis de Sales' High School" }],
   // Static file — app/manifest.ts would always win and break /admin-app.webmanifest.
   manifest: '/event-app.webmanifest',
-  applicationName: 'SFS Golden Jubilee',
+  applicationName: 'SFS Alumni website',
   appleWebApp: {
     capable: true,
-    title: 'SFS Jubilee',
+    title: 'SFS Alumni',
     statusBarStyle: 'default',
   },
   icons: {
     icon: [
       { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
     ],
+    shortcut: ['/icons/icon-192.png'],
     apple: [{ url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
   },
   openGraph: {
-    title: "St. Francis de Sales' High School - Golden Jubilee (1976-2026)",
+    title: "St. Francis de Sales' High School - Alumni Meet on 50 year aniversary (1976-2026)",
     description: 'Celebrating 50 glorious years of transformational education.',
     type: 'website',
     url: 'https://goldenJubilee.sfsshanthinagar.edu',
+    images: [
+      {
+        url: '/icons/icon-192.png',
+        width: 192,
+        height: 192,
+        alt: "St. Francis de Sales' High School Golden Jubilee Logo",
+      },
+    ],
   },
 };
 

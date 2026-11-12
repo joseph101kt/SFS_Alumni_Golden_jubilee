@@ -11,6 +11,9 @@ export type ExistingRegistrationRow = {
   food_preference: string | null;
   number_of_guests: number | null;
   guests_eating: number | null;
+  has_parking?: boolean | null;
+  two_wheeler_count?: number | null;
+  four_wheeler_count?: number | null;
   phone_number: string | null;
   payment_status: string;
   total_cost_paise?: number;
@@ -47,6 +50,9 @@ export type RegistrationPrefill = {
   food_preference: FoodPreference;
   number_of_guests: number;
   guests_eating: number;
+  has_parking: boolean;
+  two_wheeler_count: number;
+  four_wheeler_count: number;
   intended_donation_paise: number;
   payment_status?: string;
   donation_payment_status: string | null;
@@ -67,6 +73,8 @@ export function mergeRegistrationPrefill(
   row: ExistingRegistrationRow | null | undefined
 ): RegistrationPrefill {
   const loc = parseLocation(profile?.current_location || '');
+  // The database keeps vehicle counts at 0 when parking is off. Mirror that here so the form matches.
+  const hasParking = row?.has_parking === true;
   return {
     full_name: String(profile?.full_name || '').trim(),
     last_name: String(profile?.last_name || '').trim(),
@@ -81,6 +89,9 @@ export function mergeRegistrationPrefill(
     food_preference: normalizeFoodPreference(row?.food_preference),
     number_of_guests: nonNegativeInt(row?.number_of_guests),
     guests_eating: nonNegativeInt(row?.guests_eating),
+    has_parking: hasParking,
+    two_wheeler_count: hasParking ? nonNegativeInt(row?.two_wheeler_count) : 0,
+    four_wheeler_count: hasParking ? nonNegativeInt(row?.four_wheeler_count) : 0,
     intended_donation_paise: nonNegativeInt(row?.intended_donation_paise),
     payment_status: row?.payment_status,
     donation_payment_status: row?.donation_payment_status ?? null,

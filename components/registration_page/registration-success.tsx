@@ -93,9 +93,7 @@ export function RegistrationSuccess(props: RegistrationSuccessProps) {
                         </div>
                     )}
 
-                    <div className="mb-6 text-left">
-                        <EventPushOptIn auto autoRequest />
-                    </div>
+
 
                     {error && (
                         <div role="alert" className="p-3 rounded-lg bg-error-container text-error text-body-sm mb-6 text-left">

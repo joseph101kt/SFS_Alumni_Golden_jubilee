@@ -12,7 +12,7 @@ export type DayOfInfo = {
 
 export function getDayOfInfo(): DayOfInfo {
   return {
-    headline: process.env.NEXT_PUBLIC_EVENT_DAY_HEADLINE || 'Golden Jubilee weekend',
+    headline: process.env.NEXT_PUBLIC_EVENT_DAY_HEADLINE || 'Alumni Meet',
     when: process.env.NEXT_PUBLIC_EVENT_DAY_WHEN || 'Follow your venue pass for timing',
     venue: process.env.NEXT_PUBLIC_EVENT_DAY_VENUE || 'SFS High School, Shanthinagar',
     mapUrl: process.env.NEXT_PUBLIC_EVENT_DAY_MAP_URL || 'https://maps.google.com/?q=SFS+High+School+Shanthinagar',

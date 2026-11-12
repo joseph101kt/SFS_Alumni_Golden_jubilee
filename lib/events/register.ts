@@ -2,6 +2,8 @@
 // Reads and saves one account's registration for one event. The fee comes only from
 // getEventCostBreakdown. The donation intent is stored as a pending donation row linked
 // from the registration. Payment and code issuance happen in mark-paid.ts.
+// Parking: has_parking plus 2-wheeler and 4-wheeler counts. Counts are stored as zero when parking is off,
+// and total vehicles may not exceed guests + 1 (the alumnus plus each guest).
 
 import type { AlumniAccount } from '@/lib/auth/request';
 import {
@@ -26,9 +28,11 @@ import {
   anyoneEating,
   clampGuestCount,
   clampGuestsEating,
+  clampVehicleCount,
   getEventCostBreakdown,
   isEventAttending,
   normalizeFoodPreference,
+  vehicleCountsProblem,
 } from '@/lib/registration/registration';
 import {
   formatLocation,
@@ -43,7 +47,7 @@ import { createAdminClient } from '@/lib/supabase-admin';
 type AdminClient = ReturnType<typeof createAdminClient>;
 
 const REG_SELECT =
-  'id,event_id,number_of_guests,guests_eating,attending,lunch,food_preference,phone_number,payment_status,total_cost_paise,amount_paid_paise,donation_id,core_committee_manually_verified,bank_reference';
+  'id,event_id,number_of_guests,guests_eating,attending,lunch,food_preference,has_parking,two_wheeler_count,four_wheeler_count,phone_number,payment_status,total_cost_paise,amount_paid_paise,donation_id,core_committee_manually_verified,bank_reference';
 
 type RegistrationRow = {
   id: string;
@@ -53,6 +57,9 @@ type RegistrationRow = {
   attending: boolean;
   lunch: boolean;
   food_preference: string | null;
+  has_parking: boolean;
+  two_wheeler_count: number;
+  four_wheeler_count: number;
   phone_number: string | null;
   payment_status: string;
   total_cost_paise: number;
@@ -310,6 +317,16 @@ export async function registerAccountForEvent(
     };
   }
 
+  // Parking: counts are stored only when parking is needed, and the total cannot exceed
+  // the people coming (alumnus + guests).
+  const hasParking = body.has_parking === true;
+  const twoWheelers = hasParking ? clampVehicleCount(body.two_wheeler_count) : 0;
+  const fourWheelers = hasParking ? clampVehicleCount(body.four_wheeler_count) : 0;
+  if (hasParking) {
+    const parkingProblem = vehicleCountsProblem(twoWheelers, fourWheelers, guestCount);
+    if (parkingProblem) return { status: 400, payload: { error: parkingProblem } };
+  }
+
   // Eating: the alumnus eats only when attending. Guests eat by count.
   const alumnusEats = attending && body.lunch !== false;
   const guestsEating = clampGuestsEating(body.guests_eating, guestCount);
@@ -395,6 +412,9 @@ export async function registerAccountForEvent(
     attending,
     lunch: alumnusEats,
     food_preference: foodPreference,
+    has_parking: hasParking,
+    two_wheeler_count: twoWheelers,
+    four_wheeler_count: fourWheelers,
     total_cost_paise: feeTotal,
     amount_paid_paise: priorPaid,
     payment_status,
@@ -503,6 +523,9 @@ export async function registerAccountForEvent(
       total_due_paise: totalDue,
       jubilee_reg_status: jubilee,
       registration_code: registrationCode,
+      has_parking: hasParking,
+      two_wheeler_count: twoWheelers,
+      four_wheeler_count: fourWheelers,
     },
   };
 }

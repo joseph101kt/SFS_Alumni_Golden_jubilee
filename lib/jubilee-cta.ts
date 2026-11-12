@@ -14,7 +14,7 @@ export type JubileeCta = {
 
 export function jubileeCta(account: JubileeAccountHint | null | undefined): JubileeCta {
   if (!account) {
-    return { show: true, href: '/registration', label: 'Register for Golden Jubilee' };
+    return { show: true, href: '/registration', label: 'Register for Alumni Meet' };
   }
   if (account.role === 'admin') {
     return { show: false, href: '/admin', label: '' };
@@ -26,7 +26,7 @@ export function jubileeCta(account: JubileeAccountHint | null | undefined): Jubi
   if (status === 'pending_payment') {
     return { show: true, href: '/registration', label: 'Complete payment' };
   }
-  return { show: true, href: '/registration', label: 'Register for Golden Jubilee' };
+  return { show: true, href: '/registration', label: 'Register for Alumni Meet' };
 }
 
 /** Compact nav label (shorter than hero). */

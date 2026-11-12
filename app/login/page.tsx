@@ -78,7 +78,7 @@ function LoginForm() {
                     </div>
                     <h1 className="text-headline-lg text-primary mb-2">Welcome Back</h1>
                     <p className="text-body-sm text-on-surface-variant">
-                        Sign in to your account to register for the Golden Jubilee
+                        Sign in to your account to register for the Alumni Meet
                     </p>
                 </div>
 

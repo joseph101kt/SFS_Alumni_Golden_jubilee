@@ -170,7 +170,7 @@ export default function MemberPage() {
 
         <div className="mt-8 rounded-2xl bg-primary text-white p-8">
           <div className="text-label-sm uppercase tracking-widest text-secondary-fixed">
-            1976–2026 · Golden Jubilee
+            1976–2026 · 50 year Aniversary Alumni Meet
           </div>
           <h2 className="text-headline-md mt-2">Once SFS, always SFS.</h2>
           <p className="text-body-sm text-white/80 mt-2 max-w-2xl">

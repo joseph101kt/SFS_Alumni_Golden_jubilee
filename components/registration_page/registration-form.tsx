@@ -3,6 +3,7 @@
 // Name, email and phone come from the alumni account and are shown read-only, not typed here.
 // Amounts shown are `displayMoney` (saved, or a live preview while edited). The Pay button is
 // hidden when the bank-transfer route is selected.
+// Parking: total vehicles (2-wheelers + 4-wheelers) cannot exceed guests + 1 (the alumnus).
 
 import { useState, type Dispatch, type FormEvent, type SetStateAction, type KeyboardEvent } from 'react';
 import BackHomeLink from '@/components/back-home-link';
@@ -16,8 +17,10 @@ import {
     anyoneEating,
     clampGuestCount,
     clampGuestsEating,
+    clampVehicleCount,
     EVENT_FEE_PER_PERSON_PAISE,
     formatCostForDisplay,
+    maxVehiclesFor,
     MAX_GUESTS,
     MIN_GUESTS,
     normalizeFoodPreference,
@@ -82,6 +85,25 @@ const FOOD_OPTIONS: ReadonlyArray<{ value: FoodPreference; label: string }> = [
     { value: 'veg', label: 'Veg' },
     { value: 'non-veg', label: 'Non-veg' },
 ];
+
+/**
+ * Brings the two vehicle counts back under the limit, reducing 4-wheelers first, then 2-wheelers.
+ * Used when guests drop or parking is switched off, so the form never holds an invalid total.
+ */
+function fitVehiclesWithin(twoWheelers: number, fourWheelers: number, maxTotal: number): { two: number; four: number } {
+    let two = clampVehicleCount(twoWheelers);
+    let four = clampVehicleCount(fourWheelers);
+    let over = two + four - maxTotal;
+    if (over > 0) {
+        const cutFour = Math.min(four, over);
+        four -= cutFour;
+        over -= cutFour;
+    }
+    if (over > 0) {
+        two = Math.max(0, two - over);
+    }
+    return { two, four };
+}
 
 interface YesNoFieldProps {
     name: string;
@@ -189,12 +211,21 @@ export function RegistrationForm(props: RegistrationFormProps) {
     const guestsEating = clampGuestsEating(formData.guests_eating, guestCount);
     const showFoodQuestion = anyoneEating(formData.attending && formData.lunch, guestsEating);
 
+    // Parking limits: total vehicles may not exceed the people coming (alumnus + guests).
+    const maxVehicles = maxVehiclesFor(guestCount);
+    const twoWheelerMax = Math.max(0, maxVehicles - clampVehicleCount(formData.four_wheeler_count));
+    const fourWheelerMax = Math.max(0, maxVehicles - clampVehicleCount(formData.two_wheeler_count));
+    const vehicleTotal = clampVehicleCount(formData.two_wheeler_count) + clampVehicleCount(formData.four_wheeler_count);
+
     function changeGuestCount(raw: string) {
         const next = clampGuestCount(parseInt(raw, 10));
+        const fitted = fitVehiclesWithin(formData.two_wheeler_count, formData.four_wheeler_count, maxVehiclesFor(next));
         setFormData({
             ...formData,
             number_of_guests: next,
             guests_eating: Math.min(formData.guests_eating, next),
+            two_wheeler_count: formData.has_parking ? fitted.two : 0,
+            four_wheeler_count: formData.has_parking ? fitted.four : 0,
         });
     }
 
@@ -207,6 +238,26 @@ export function RegistrationForm(props: RegistrationFormProps) {
 
     function changeAttending(next: boolean) {
         setFormData({ ...formData, attending: next });
+    }
+
+    /** Turning parking off clears the vehicle counts so the saved data matches what is shown. */
+    function changeHasParking(next: boolean) {
+        setFormData({
+            ...formData,
+            has_parking: next,
+            two_wheeler_count: next ? formData.two_wheeler_count : 0,
+            four_wheeler_count: next ? formData.four_wheeler_count : 0,
+        });
+    }
+
+    function changeTwoWheelerCount(raw: string) {
+        const requested = clampVehicleCount(parseInt(raw, 10));
+        setFormData({ ...formData, two_wheeler_count: Math.min(requested, twoWheelerMax) });
+    }
+
+    function changeFourWheelerCount(raw: string) {
+        const requested = clampVehicleCount(parseInt(raw, 10));
+        setFormData({ ...formData, four_wheeler_count: Math.min(requested, fourWheelerMax) });
     }
 
     const payLabel =
@@ -229,10 +280,10 @@ export function RegistrationForm(props: RegistrationFormProps) {
                     </h1>
                     <p className={`text-body-sm text-on-surface-variant ${hasSavedReg ? 'mb-4' : 'mb-8'}`}>
                         {hasSavedReg
-                            ? 'Change your attendance, lunch, or guests anytime. Amounts update as you edit. Pay saves your changes first.'
+                            ? 'Change your attendance, lunch, guests, or parking anytime. Amounts update as you edit. Pay saves your changes first.'
                             : event
                               ? `Register for ${event.title}`
-                              : 'Complete your registration for the Golden Jubilee'}
+                              : 'Complete your registratione for the alumni meet'}
                     </p>
                     {hasSavedReg && (
                         <p className="rounded-xl border border-jubilee-gold-light bg-secondary-container/30 p-4 text-body-sm text-on-secondary-fixed-variant mb-8">
@@ -408,17 +459,76 @@ export function RegistrationForm(props: RegistrationFormProps) {
                             </div>
                         </div>
 
+                        {/* Parking */}
+                        <div>
+                            <h2 className="text-headline-sm text-primary mb-4 uppercase tracking-wider">Parking</h2>
+
+                            <div className="space-y-6">
+                                <YesNoField
+                                    name="has_parking"
+                                    legend="Do you need parking?"
+                                    value={formData.has_parking}
+                                    onChange={changeHasParking}
+                                    disabled={busy}
+                                />
+
+                                {formData.has_parking && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="flex flex-col">
+                                            <label htmlFor="two_wheeler_count" className="text-label-md text-primary mb-2 uppercase tracking-wider">
+                                                Number of 2-wheelers
+                                            </label>
+                                            <input
+                                                id="two_wheeler_count"
+                                                type="number"
+                                                min={0}
+                                                max={twoWheelerMax}
+                                                step={1}
+                                                value={formData.two_wheeler_count}
+                                                onChange={(e) => changeTwoWheelerCount(e.target.value)}
+                                                disabled={busy}
+                                                className={INPUT_CLASS}
+                                            />
+                                        </div>
+
+                                        <div className="flex flex-col">
+                                            <label htmlFor="four_wheeler_count" className="text-label-md text-primary mb-2 uppercase tracking-wider">
+                                                Number of 4-wheelers
+                                            </label>
+                                            <input
+                                                id="four_wheeler_count"
+                                                type="number"
+                                                min={0}
+                                                max={fourWheelerMax}
+                                                step={1}
+                                                value={formData.four_wheeler_count}
+                                                onChange={(e) => changeFourWheelerCount(e.target.value)}
+                                                disabled={busy}
+                                                className={INPUT_CLASS}
+                                            />
+                                        </div>
+
+                                        <p className="md:col-span-2 text-label-sm text-on-surface-variant">
+                                            Total vehicles (2-wheelers and 4-wheelers together) can be up to {maxVehicles}: one for
+                                            you and one for each of your {guestCount} guest{guestCount === 1 ? '' : 's'}.
+                                            {vehicleTotal === 0 ? ' Enter at least one vehicle.' : ` Currently ${vehicleTotal} of ${maxVehicles}.`}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
                         <p className="text-label-sm text-on-surface-variant pt-4">
-                            Event fee {feeLabel} per person. Only people who are eating pay the fee. You pay only if you attend and
-                            have lunch.
+                            Registration fee {feeLabel} for each person attending, including guests, whether or not they have
+                            lunch. Alumni from batches 2021–26 do not pay their own fee.
                         </p>
 
                         {isSeniorSponsored && (
                             <div role="note" className="p-4 rounded-lg border border-jubilee-gold-light bg-secondary-container/30 text-body-sm text-on-secondary-fixed-variant">
                                 <p>
-                                    Your event fee for batches 2021–26 is borne by Alumni Seniors. Guests still pay {feeLabel} each when
-                                    eating. <strong>Please bring your ID card to prove your name</strong>, which should match school
-                                    records at Event Check-in.
+                                    Your event fee for batches 2021–26 is borne by Alumni Seniors. Guests still pay {feeLabel} each.{' '}
+                                    <strong>Please bring your ID card to prove your name</strong>, which should match school records at
+                                    Event Check-in.
                                 </p>
                             </div>
                         )}

@@ -280,6 +280,15 @@ export default function HomePage() {
                   info@sfsshanthinagar.com
                 </a>
                 <a
+                  href="mailto:info@sfsshanthinagar.com"
+                  className="inline-flex items-center gap-2.5 text-body-sm text-on-surface-variant hover:text-primary transition-colors"
+                >
+                  <span className="material-symbols-outlined text-primary text-[18px]">
+                    mail
+                  </span>
+                  sfsalumnis@gmail.com
+                </a>
+                <a
                   href="tel:+918012345678"
                   className="inline-flex items-center gap-2.5 text-body-sm text-on-surface-variant hover:text-primary transition-colors"
                 >
@@ -287,6 +296,15 @@ export default function HomePage() {
                     call
                   </span>
                   +91 80 1234 5678
+                </a>
+                <a
+                  href="tel:+918012345678"
+                  className="inline-flex items-center gap-2.5 text-body-sm text-on-surface-variant hover:text-primary transition-colors"
+                >
+                  <span className="material-symbols-outlined text-primary text-[18px]">
+                    call
+                  </span>
+                  +91 7416 368 516
                 </a>
               </div>
 
